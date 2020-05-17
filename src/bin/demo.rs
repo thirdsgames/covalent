@@ -1,3 +1,5 @@
+use covalent;
+
 fn main() {
-    println!("Main ran")
+    let c = covalent::Covalent::new(Box::new(covalent::BackendGL::new()));
 }
