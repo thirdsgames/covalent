@@ -2,7 +2,7 @@ use crate::render_backend::RenderBackend;
 
 /// The Covalent structure contains all the information required to render a scene.
 pub struct Covalent {
-    pub hints: DisplayHints,
+    hints: DisplayHints,
     rb: Box<dyn RenderBackend>
 }
 
@@ -41,8 +41,6 @@ impl Covalent {
     /// Executes the application defined by this Covalent context.
     pub fn execute(mut self) {
         self.rb.create_window(&self.hints);
-        loop {
-            self.rb.render_frame();
-        }
+        self.rb.main_loop();
     }
 }

@@ -8,6 +8,9 @@ pub trait RenderBackend {
     /// This function will only be called once.
     fn create_window(&mut self, dh: &DisplayHints);
 
-    /// Renders a single frame on the back buffer, and swaps the back buffer to the front.
-    fn render_frame(&mut self);
+    /// Enters a loop that will not be terminated until the application itself quits.
+    /// Every loop iteration, the following steps must be taken.
+    /// - Render a single frame on the back buffer.
+    /// - Swap the back and front buffers.
+    fn main_loop(&mut self);
 }
