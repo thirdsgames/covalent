@@ -3,6 +3,8 @@ name = "covalent_gl"
 version = "0.1.0"
 authors = ["thirdsgames <thirdsgames2018@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "OpenGL backend for the Covalent engine"
 default-run = "covalent_demo"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
