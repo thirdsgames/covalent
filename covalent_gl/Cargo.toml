@@ -10,7 +10,7 @@ default-run = "covalent_demo"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-covalent = { path = "../covalent" } # , version = "*"
+covalent = { path = "../covalent", version = "*" }
 glium = "*"
 
 [[bin]]
