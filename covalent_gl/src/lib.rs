@@ -1,10 +1,10 @@
-use covalent::RenderBackend;
-use covalent::DisplayHints;
-use covalent::Renderer;
-use covalent::Batch;
 use glium;
 use glium::glutin;
 use glium::Surface;
+use covalent::cgmath::Vector3;
+use covalent::DisplayHints;
+use covalent::graphics;
+use covalent::graphics::RenderContext;
 
 /// BackendGL is a rendering backend for Covalent, using OpenGL.
 pub struct BackendGL;
@@ -15,8 +15,8 @@ impl BackendGL {
     }
 }
 
-impl RenderBackend for BackendGL {
-    fn main_loop(self, dh: DisplayHints, r: Renderer) {
+impl graphics::Backend for BackendGL {
+    fn main_loop(self, dh: DisplayHints) {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
@@ -52,7 +52,6 @@ impl RenderBackend for BackendGL {
         let vbo = glium::VertexBuffer::dynamic(&display, &vec![Vertex { position: [0.0, 0.0] }; 100]).unwrap();
         let ibo = glium::index::IndexBuffer::dynamic(&display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; 100]).unwrap();
         let mut batch = BatchGL {
-            frame: None,
             vbo: vbo,
             ibo: ibo,
             program: program,
@@ -75,9 +74,29 @@ impl RenderBackend for BackendGL {
                 glutin::event::Event::MainEventsCleared => {
                     let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
 
-                    let frame = display.draw();
-                    batch.set_frame(frame);
-                    r.render(&mut batch);
+                    {
+                        let mut frame = display.draw();
+
+                        {
+                            let mut rc = RenderContextGL {
+                                vbo: batch.vbo.map_write(),
+                                ibo: batch.ibo.map_write()
+                            };
+                            
+                            rc.render_tri(
+                                &graphics::RenderVertex { pos: Vector3 { x: -0.8, y: 1.0, z: 0.0 } },
+                                &graphics::RenderVertex { pos: Vector3 { x: 0.9, y: -0.4, z: 0.0 } },
+                                &graphics::RenderVertex { pos: Vector3 { x: 0.1, y: -0.8, z: 0.0 } }
+                            );
+                        }
+
+                        let params = Default::default();
+                        frame.draw(&batch.vbo, &batch.ibo.slice(0 .. 6).unwrap(), &batch.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
+                        
+                        if let Err(e) = frame.finish() {
+                            eprintln!("Error caught when swapping buffers: {:?}", e);
+                        }
+                    }
 
                     // Simulate vsync by waiting 1/60 of a second.
                     *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
@@ -95,44 +114,33 @@ struct Vertex {
 glium::implement_vertex!(Vertex, position);
 
 struct BatchGL {
-    frame: Option<glium::Frame>,
     vbo: glium::VertexBuffer<Vertex>,
     ibo: glium::IndexBuffer<u32>,
     program: glium::Program,
 }
 
-impl BatchGL {
-    /// Call this before begin and end.
-    fn set_frame(&mut self, frame: glium::Frame) {
-        self.frame = Some(frame)
-    }
+struct RenderContextGL<'a> {
+    vbo: glium::buffer::WriteMapping<'a, [Vertex]>,
+    ibo: glium::buffer::WriteMapping<'a, [u32]>
 }
 
-impl Batch for BatchGL {
-    fn begin(&mut self) {
-        let vdata = vec![
-            Vertex { position: [ -0.5, -0.5 ] },
-            Vertex { position: [  0.5,  0.5 ] },
-            Vertex { position: [  0.5, -0.5 ] },
-            Vertex { position: [ -0.5,  0.5 ] },
-        ];
-        let idata = vec![
-            0u32, 1u32, 2u32,
-            0u32, 1u32, 3u32,
-        ];
+impl graphics::RenderContext for RenderContextGL<'_> {
+    fn render_tri(&mut self, a: &graphics::RenderVertex, b: &graphics::RenderVertex, c: &graphics::RenderVertex) {
+        let vbo = &mut self.vbo;
+        let ibo = &mut self.ibo;
 
-        self.vbo.slice(0 .. 4).unwrap().write(&vdata);
-        self.ibo.slice(0 .. 6).unwrap().write(&idata);
-    }
+        vbo.set(0, Vertex {
+            position: [ a.pos.x, a.pos.y ]
+        });
+        vbo.set(1, Vertex {
+            position: [ b.pos.x, b.pos.y ]
+        });
+        vbo.set(2, Vertex {
+            position: [ c.pos.x, c.pos.y ]
+        });
 
-    fn end(&mut self) {
-        let mut frame = self.frame.take().unwrap();
-
-        let params = Default::default();
-        frame.draw(&self.vbo, &self.ibo.slice(0 .. 6).unwrap(), &self.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
-        
-        if let Err(e) = frame.finish() {
-            eprintln!("Error caught when swapping buffers: {:?}", e);
-        }
+        ibo.set(0, 0u32);
+        ibo.set(1, 1u32);
+        ibo.set(2, 2u32);
     }
 }
