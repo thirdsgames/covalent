@@ -1,17 +1,4 @@
-[package]
-name = "covalent"
-version = "0.1.0"
-authors = ["Thirds <thirdsgames2018@gmail.com>"]
-edition = "2018"
-default-run = "covalent_demo"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-glium = "*"
-
-[lib]
-
-[[bin]]
-name = "covalent_demo"
-path = "src/bin/demo.rs"
+[workspace]
+members = ["covalent", "covalent_gl"]

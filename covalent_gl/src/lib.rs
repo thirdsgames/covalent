@@ -1,5 +1,5 @@
-use crate::render_backend::RenderBackend;
-use crate::covalent::DisplayHints;
+use covalent::RenderBackend;
+use covalent::DisplayHints;
 use glium;
 use glium::glutin;
 use glium::Surface;
