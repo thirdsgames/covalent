@@ -28,14 +28,6 @@ impl RenderBackend for BackendGL {
         // 4. Build the Display with the given window and OpenGL context parameters and register the
         //    window with the events_loop.
         let display = glium::Display::new(wb, cb, &event_loop).unwrap();
-        
-        let shape = vec![
-            Vertex { position: [ -0.5, -0.5 ] },
-            Vertex { position: [  0.0,  0.5 ] },
-            Vertex { position: [  0.5, -0.5 ] },
-        ];
-        let vbo = glium::VertexBuffer::new(&display, &shape).unwrap();
-        let ibo = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
         let vertex_shader_src = r#"
             #version 140
@@ -57,7 +49,14 @@ impl RenderBackend for BackendGL {
         "#;
         let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
-        let mut batch = BatchGL {};
+        let vbo = glium::VertexBuffer::dynamic(&display, &vec![Vertex { position: [0.0, 0.0] }; 100]).unwrap();
+        let ibo = glium::index::IndexBuffer::dynamic(&display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; 100]).unwrap();
+        let mut batch = BatchGL {
+            frame: None,
+            vbo: vbo,
+            ibo: ibo,
+            program: program,
+        };
 
         event_loop.run(move |ev, _, control_flow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
@@ -76,16 +75,9 @@ impl RenderBackend for BackendGL {
                 glutin::event::Event::MainEventsCleared => {
                     let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
 
-                    let mut frame = display.draw();
-
-                    frame.draw(&vbo, &ibo, &program, &glium::uniforms::EmptyUniforms,
-                        &Default::default()).unwrap();
-
+                    let frame = display.draw();
+                    batch.set_frame(frame);
                     r.render(&mut batch);
-
-                    if let Err(e) = frame.finish() {
-                        eprintln!("Error caught when swapping buffers: {:?}", e);
-                    }
 
                     // Simulate vsync by waiting 1/60 of a second.
                     *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
@@ -103,15 +95,44 @@ struct Vertex {
 glium::implement_vertex!(Vertex, position);
 
 struct BatchGL {
+    frame: Option<glium::Frame>,
+    vbo: glium::VertexBuffer<Vertex>,
+    ibo: glium::IndexBuffer<u32>,
+    program: glium::Program,
+}
 
+impl BatchGL {
+    /// Call this before begin and end.
+    fn set_frame(&mut self, frame: glium::Frame) {
+        self.frame = Some(frame)
+    }
 }
 
 impl Batch for BatchGL {
     fn begin(&mut self) {
+        let vdata = vec![
+            Vertex { position: [ -0.5, -0.5 ] },
+            Vertex { position: [  0.5,  0.5 ] },
+            Vertex { position: [  0.5, -0.5 ] },
+            Vertex { position: [ -0.5,  0.5 ] },
+        ];
+        let idata = vec![
+            0u32, 1u32, 2u32,
+            0u32, 1u32, 3u32,
+        ];
 
+        self.vbo.slice(0 .. 4).unwrap().write(&vdata);
+        self.ibo.slice(0 .. 6).unwrap().write(&idata);
     }
 
     fn end(&mut self) {
+        let mut frame = self.frame.take().unwrap();
+
+        let params = Default::default();
+        frame.draw(&self.vbo, &self.ibo.slice(0 .. 6).unwrap(), &self.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
         
+        if let Err(e) = frame.finish() {
+            eprintln!("Error caught when swapping buffers: {:?}", e);
+        }
     }
 }
