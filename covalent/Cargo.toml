@@ -5,6 +5,7 @@ authors = ["thirdsgames <thirdsgames2018@gmail.com>"]
 edition = "2018"
 description = "Modular, fast, open rendering engine"
 license = "Apache-2.0"
+repository = "https://github.com/thirdsgames/covalent"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

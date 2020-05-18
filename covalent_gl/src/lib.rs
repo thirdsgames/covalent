@@ -1,38 +1,22 @@
 use covalent::RenderBackend;
 use covalent::DisplayHints;
+use covalent::Renderer;
+use covalent::Batch;
 use glium;
 use glium::glutin;
 use glium::Surface;
 
 /// BackendGL is a rendering backend for Covalent, using OpenGL.
-pub struct BackendGL {
-    ctx: Option<Context>
-}
-
-/// The render context, containing all glium information.
-/// This is kept separate from the BackendGL struct so that we can create the window *after*
-/// creating the backend struct.
-struct Context {
-    event_loop: glium::glutin::event_loop::EventLoop<()>,
-    display: glium::Display
-}
+pub struct BackendGL;
 
 impl BackendGL {
     pub fn new() -> BackendGL {
-        BackendGL {
-            ctx: None
-        }
+        BackendGL {}
     }
 }
 
-#[derive(Copy, Clone)]
-struct Vertex {
-    position: [f32; 2],
-}
-glium::implement_vertex!(Vertex, position);
-
 impl RenderBackend for BackendGL {
-    fn create_window(&mut self, dh: &DisplayHints) {
+    fn main_loop(self, dh: DisplayHints, r: Renderer) {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
@@ -44,16 +28,6 @@ impl RenderBackend for BackendGL {
         // 4. Build the Display with the given window and OpenGL context parameters and register the
         //    window with the events_loop.
         let display = glium::Display::new(wb, cb, &event_loop).unwrap();
-
-        self.ctx = Some(Context {
-            event_loop: event_loop,
-            display: display
-        });
-    }
-
-    fn main_loop(&mut self) {
-        let ctx = self.ctx.take().unwrap();
-        let display = ctx.display;
         
         let shape = vec![
             Vertex { position: [ -0.5, -0.5 ] },
@@ -83,7 +57,9 @@ impl RenderBackend for BackendGL {
         "#;
         let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
-        ctx.event_loop.run(move |ev, _, control_flow| {
+        let mut batch = BatchGL {};
+
+        event_loop.run(move |ev, _, control_flow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
 
             match ev {
@@ -105,6 +81,8 @@ impl RenderBackend for BackendGL {
                     frame.draw(&vbo, &ibo, &program, &glium::uniforms::EmptyUniforms,
                         &Default::default()).unwrap();
 
+                    r.render(&mut batch);
+
                     if let Err(e) = frame.finish() {
                         eprintln!("Error caught when swapping buffers: {:?}", e);
                     }
@@ -115,5 +93,25 @@ impl RenderBackend for BackendGL {
                 _ => (),
             }
         });
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Vertex {
+    position: [f32; 2],
+}
+glium::implement_vertex!(Vertex, position);
+
+struct BatchGL {
+
+}
+
+impl Batch for BatchGL {
+    fn begin(&mut self) {
+
+    }
+
+    fn end(&mut self) {
+        
     }
 }

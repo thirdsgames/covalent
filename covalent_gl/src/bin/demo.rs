@@ -7,6 +7,5 @@ fn main() {
 
     let backend = covalent_gl::BackendGL::new();
 
-    let c = covalent::Covalent::new(hints, Box::new(backend));
-    c.execute();
+    covalent::execute(hints, backend);
 }
