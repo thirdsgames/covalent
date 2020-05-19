@@ -7,5 +7,11 @@ fn main() {
 
     let backend = covalent_gl::BackendGL::new();
 
-    covalent::execute(hints, backend);
+    let mut pipeline = covalent::graphics::Pipeline::new();
+    pipeline.add_phase(0, String::from("Render"), covalent::graphics::PipelinePhase::Render(
+        covalent::graphics::RenderSettings {},
+        covalent::graphics::RenderTarget::Default
+    ));
+
+    covalent::execute(hints, pipeline, backend);
 }

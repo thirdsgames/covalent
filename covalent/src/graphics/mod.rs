@@ -1,6 +1,17 @@
 mod backend;
 pub use backend::Backend;
 
+mod primitives;
+pub use primitives::*;
+
+mod render_target;
+pub use render_target::RenderTarget;
+
+mod pipeline;
+pub use pipeline::Pipeline;
+pub use pipeline::PipelinePhase;
+pub use pipeline::RenderSettings;
+
 use cgmath::Vector3;
 
 /// Covalent uses batched rendering. Objects are rendered to a batch, which should populate the GPU
@@ -26,14 +37,4 @@ pub trait Renderable {
 #[derive(Copy, Clone)]
 pub struct RenderVertex {
     pub pos: Vector3<f32>
-}
-
-pub struct PrimTriangle {
-    verts: [RenderVertex; 3]
-}
-
-impl Renderable for PrimTriangle {
-    fn render(&self, rc: &mut impl RenderContext) {
-        rc.render_tri(&self.verts[0], &self.verts[1], &self.verts[2]);
-    }
 }

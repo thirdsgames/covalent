@@ -1,10 +1,9 @@
 use glium;
 use glium::glutin;
-use glium::Surface;
 use covalent::cgmath::Vector3;
 use covalent::DisplayHints;
 use covalent::graphics;
-use covalent::graphics::RenderContext;
+use covalent::graphics::{Pipeline, PipelinePhase, RenderContext, RenderTarget, RenderSettings};
 
 /// BackendGL is a rendering backend for Covalent, using OpenGL.
 pub struct BackendGL;
@@ -16,7 +15,7 @@ impl BackendGL {
 }
 
 impl graphics::Backend for BackendGL {
-    fn main_loop(self, dh: DisplayHints) {
+    fn main_loop(self, dh: DisplayHints, pipeline: Pipeline) {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
@@ -73,29 +72,14 @@ impl graphics::Backend for BackendGL {
                 // We can now begin rendering the screen.
                 glutin::event::Event::MainEventsCleared => {
                     let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
+                    let mut frame = display.draw();
 
-                    {
-                        let mut frame = display.draw();
-
-                        {
-                            let mut rc = RenderContextGL {
-                                vbo: batch.vbo.map_write(),
-                                ibo: batch.ibo.map_write()
-                            };
-                            
-                            rc.render_tri(
-                                &graphics::RenderVertex { pos: Vector3 { x: -0.8, y: 1.0, z: 0.0 } },
-                                &graphics::RenderVertex { pos: Vector3 { x: 0.9, y: -0.4, z: 0.0 } },
-                                &graphics::RenderVertex { pos: Vector3 { x: 0.1, y: -0.8, z: 0.0 } }
-                            );
-                        }
-
-                        let params = Default::default();
-                        frame.draw(&batch.vbo, &batch.ibo.slice(0 .. 6).unwrap(), &batch.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
+                    for (name, phase) in pipeline.iter() {
+                        self.execute_phase(name, phase, &mut batch, &mut frame);
                         
-                        if let Err(e) = frame.finish() {
-                            eprintln!("Error caught when swapping buffers: {:?}", e);
-                        }
+                    }
+                    if let Err(e) = frame.finish() {
+                        eprintln!("Error caught when swapping buffers: {:?}", e);
                     }
 
                     // Simulate vsync by waiting 1/60 of a second.
@@ -104,6 +88,39 @@ impl graphics::Backend for BackendGL {
                 _ => (),
             }
         });
+    }
+}
+
+impl BackendGL {
+    fn execute_phase(&self, _name: &str, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
+        match phase {
+            PipelinePhase::Render(settings, target) => {
+                // We need to render to the given target.
+                let render_target = match target {
+                    RenderTarget::Default => frame
+                };
+
+                self.render(settings, render_target, batch);
+            }
+        }
+    }
+
+    fn render(&self, _settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+        {
+            let mut rc = RenderContextGL {
+                vbo: batch.vbo.map_write(),
+                ibo: batch.ibo.map_write()
+            };
+            
+            rc.render_tri(
+                &graphics::RenderVertex { pos: Vector3 { x: -0.8, y: 1.0, z: 0.0 } },
+                &graphics::RenderVertex { pos: Vector3 { x: 0.9, y: -0.4, z: 0.0 } },
+                &graphics::RenderVertex { pos: Vector3 { x: 0.1, y: -0.8, z: 0.0 } }
+            );
+        }
+
+        let params = Default::default();
+        render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. 6).unwrap(), &batch.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
     }
 }
 
