@@ -3,7 +3,7 @@ use glium::glutin;
 use covalent::cgmath::Vector3;
 use covalent::DisplayHints;
 use covalent::graphics;
-use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable};
+use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderVertex, Renderable, Colour};
 
 /// Max vertices to store in a single VBO.
 const MAX_VERTS : usize = 10_000;
@@ -36,24 +36,43 @@ impl graphics::Backend for BackendGL {
         let vertex_shader_src = r#"
             #version 140
 
-            in vec2 position;
+            in vec3 position;
+            in uint col;
+            
+            out vec2 io_pos;
+            out vec4 io_col;
 
             void main() {
-                gl_Position = vec4(position, 0.0, 1.0);
+                gl_Position = vec4(position, 1.0);
+                io_pos = position.xy;
+                io_col = vec4(
+                    ((col & uint(0xFF000000)) >> 24) / 255.0f,
+                    ((col & uint(0x00FF0000)) >> 16) / 255.0f,
+                    ((col & uint(0x0000FF00)) >> 8) / 255.0f,
+                    ((col & uint(0x000000FF))) / 255.0f
+                );
             }
         "#;
         let fragment_shader_src = r#"
             #version 140
 
+            in vec2 io_pos;
+            in vec4 io_col;
+
             out vec4 color;
 
             void main() {
-                color = vec4(1.0, 0.0, 0.0, 1.0);
+                //color = vec4(io_pos.x*0.5+0.5, io_pos.y*0.5+0.5, 1.0, 1.0);
+                color = io_col;
             }
         "#;
+        
         let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
-        let vbo = glium::VertexBuffer::dynamic(&display, &vec![Vertex { position: [0.0, 0.0] }; MAX_VERTS]).unwrap();
+        let vbo = glium::VertexBuffer::dynamic(&display, &vec![Vertex {
+            position: [0.0, 0.0, 0.0],
+            col: 0xFFFFFFFF
+        }; MAX_VERTS]).unwrap();
         let ibo = glium::index::IndexBuffer::dynamic(&display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; MAX_INDS]).unwrap();
         let mut batch = BatchGL {
             vbo: vbo,
@@ -81,7 +100,6 @@ impl graphics::Backend for BackendGL {
 
                     for (name, phase) in pipeline.iter() {
                         self.execute_phase(name, phase, &mut batch, &mut frame);
-                        
                     }
                     if let Err(e) = frame.finish() {
                         eprintln!("Error caught when swapping buffers: {:?}", e);
@@ -99,37 +117,68 @@ impl graphics::Backend for BackendGL {
 /// Convert a generic RenderVertex into an OpenGL-compatible vertex.
 fn conv(v: &RenderVertex) -> Vertex {
     Vertex {
-        position: [v.pos.x, v.pos.y]
+        position: [v.pos.x, v.pos.y, v.pos.z],
+        col: v.col.packed()
     }
 }
 
 impl BackendGL {
     fn execute_phase(&self, _name: &str, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
         match phase {
-            PipelinePhase::Render(settings, target) => {
-                // We need to render to the given target.
+            PipelinePhase::Clear { target } => {
+                // We need to clear the given target.
                 let render_target = match target {
-                    RenderTarget::Default => frame
+                    RenderTarget::Window => frame
                 };
 
-                self.render(settings, render_target, batch);
+                self.clear(render_target);
+            },
+            PipelinePhase::Render { target } => {
+                // We need to render to the given target.
+                let render_target = match target {
+                    RenderTarget::Window => frame
+                };
+
+                self.render(render_target, batch);
             }
         }
     }
 
-    fn render(&self, _settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+    fn clear(&self, render_target: &mut impl glium::Surface) {
+        render_target.clear_color(0.5, 0.5, 0.5, 1.0);
+    }
+
+    fn render(&self, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
         let mut scene = Vec::new();
         for i in (-100..100).map(|x| x as f32) {
             for j in (-100..100).map(|x| x as f32) {
                 scene.push(Renderable::Triangle(
-                    RenderVertex { pos: Vector3 { x: i * 0.01, y: j * 0.01, z: 0.0 } },
-                    RenderVertex { pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 } },
-                    RenderVertex { pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 } }
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01, y: j * 0.01, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    },
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    },
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    }
                 ));
                 scene.push(Renderable::Triangle(
-                    RenderVertex { pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01 + 0.008, z: 0.0 } },
-                    RenderVertex { pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 } },
-                    RenderVertex { pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 } }
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01 + 0.008, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    },
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    },
+                    RenderVertex {
+                        pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 },
+                        col: Colour::new(1.0, 1.0, 1.0)
+                    }
                 ));
             }
         }
@@ -188,10 +237,12 @@ fn render_lots(
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 struct Vertex {
-    position: [f32; 2],
+    position: [f32; 3],
+    col: u32
 }
-glium::implement_vertex!(Vertex, position);
+glium::implement_vertex!(Vertex, position, col);
 
 struct BatchGL {
     vbo: glium::VertexBuffer<Vertex>,

@@ -9,7 +9,7 @@ use crate::graphics::RenderTarget;
 /// 
 /// # Rules
 /// Although programmable, pipelines must conform to certain rules.
-/// - There must be at least one `Render` phase that targets the `Default` render target. This allows the user to see the result.
+/// - There must be at least one `Render` phase that targets the `Window` render target. This allows the user to see the result.
 pub struct Pipeline {
     phases: BTreeMap<i32, (String, PipelinePhase)>
 }
@@ -34,20 +34,21 @@ impl Pipeline {
 
     /// Asserts that the pipeline conforms to the rules set out in the `Pipeline`'s documentation.
     fn check_phases(&self) {
-        let mut contains_render_to_default = false;
+        let mut contains_render_to_window = false;
         for (_, phase) in self.phases.values() {
             match phase {
-                PipelinePhase::Render(_, target) => {
+                PipelinePhase::Render { target } => {
                     #[allow(irrefutable_let_patterns)]  // When we use framebuffers / other render targets, this will be needed, and probably turned into a match stmt.
-                    if let RenderTarget::Default = target {
-                        contains_render_to_default = true;
+                    if let RenderTarget::Window = target {
+                        contains_render_to_window = true;
                     }
-                }
+                },
+                _ => {}
             }
         }
 
-        if !contains_render_to_default {
-            panic!("pipeline was invalid! no phase was detected that renders to the user's display; this is disallowed behaviour!");
+        if !contains_render_to_window {
+            panic!("pipeline was invalid! no phase was detected that renders to the user's window; this is disallowed behaviour!");
         }
     }
 }
@@ -59,15 +60,16 @@ impl Pipeline {
     }
 }
 
-/// This struct defines how we should render a given scene.
-pub struct RenderSettings {
-
-}
-
 /// A single render phase.
 /// To render to the screen, construct a pipeline of these phases, which will be executed sequentially every frame by
 /// the graphics backend.
 pub enum PipelinePhase {
+    /// Clears a render target.
+    Clear {
+        target: RenderTarget
+    },
     /// Render a scene using specific settings, outputting the result to the given render target.
-    Render(RenderSettings, RenderTarget)
+    Render {
+        target: RenderTarget
+    }
 }

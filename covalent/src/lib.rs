@@ -1,5 +1,5 @@
 mod covalent;
-pub use covalent::execute;
+pub use crate::covalent::execute;
 
 mod display_hints;
 pub use display_hints::DisplayHints;

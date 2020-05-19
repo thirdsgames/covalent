@@ -7,7 +7,9 @@ pub use render_target::RenderTarget;
 mod pipeline;
 pub use pipeline::Pipeline;
 pub use pipeline::PipelinePhase;
-pub use pipeline::RenderSettings;
+
+mod colour;
+pub use colour::Colour;
 
 use cgmath::Vector3;
 
@@ -23,5 +25,6 @@ pub enum Renderable {
 /// This includes its position in world space.
 #[derive(Copy, Clone)]
 pub struct RenderVertex {
-    pub pos: Vector3<f32>
+    pub pos: Vector3<f32>,
+    pub col: Colour
 }
