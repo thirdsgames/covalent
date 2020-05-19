@@ -7,6 +7,7 @@ pub use render_target::RenderTarget;
 mod pipeline;
 pub use pipeline::Pipeline;
 pub use pipeline::PipelinePhase;
+pub use pipeline::RenderSettings;
 
 mod colour;
 pub use colour::Colour;

@@ -10,6 +10,8 @@ use crate::graphics::RenderTarget;
 /// # Rules
 /// Although programmable, pipelines must conform to certain rules.
 /// - There must be at least one `Render` phase that targets the `Window` render target. This allows the user to see the result.
+/// - `RenderChannel`s must exist for the `RenderTarget` they are assigned to. Please refer to the render channel and render
+/// target documentation for more on this topic.
 pub struct Pipeline {
     phases: BTreeMap<i32, (String, PipelinePhase)>
 }
@@ -37,7 +39,7 @@ impl Pipeline {
         let mut contains_render_to_window = false;
         for (_, phase) in self.phases.values() {
             match phase {
-                PipelinePhase::Render { target } => {
+                PipelinePhase::Render { target, .. } => {
                     #[allow(irrefutable_let_patterns)]  // When we use framebuffers / other render targets, this will be needed, and probably turned into a match stmt.
                     if let RenderTarget::Window = target {
                         contains_render_to_window = true;
@@ -70,6 +72,21 @@ pub enum PipelinePhase {
     },
     /// Render a scene using specific settings, outputting the result to the given render target.
     Render {
+        settings: RenderSettings,
         target: RenderTarget
+    }
+}
+
+/// The specification for how to render a scene.
+pub struct RenderSettings {
+
+}
+
+impl RenderSettings {
+    /// Initialises render settings to the default values.
+    pub fn new() -> RenderSettings {
+        RenderSettings {
+
+        }
     }
 }

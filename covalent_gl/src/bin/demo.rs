@@ -12,6 +12,7 @@ fn main() {
         target: covalent::graphics::RenderTarget::Window
     });
     pipeline.add_phase(100, String::from("Render"), covalent::graphics::PipelinePhase::Render {
+        settings: covalent::graphics::RenderSettings::new(),
         target: covalent::graphics::RenderTarget::Window
     });
 

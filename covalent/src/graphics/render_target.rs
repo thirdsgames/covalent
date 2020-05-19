@@ -10,6 +10,20 @@ pub enum RenderTarget {
     Window,
 }
 
+impl RenderTarget {
+    /// Tests whether the given render channel is supported by the given render target.
+    pub fn is_render_channel_supported(&self, rc: RenderChannel) -> bool {
+        match self {
+            RenderTarget::Window => {
+                match rc {
+                    RenderChannel::Colour(i) => i == 0,
+                    RenderChannel::Depth => true
+                }
+            }
+        }
+    }
+}
+
 /// When covalent renders a scene, it outputs the result to several render channels of a render target.
 /// Not all render targets will support all types of render channel.
 /// 

@@ -3,7 +3,7 @@ use glium::glutin;
 use covalent::cgmath::Vector3;
 use covalent::DisplayHints;
 use covalent::graphics;
-use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderVertex, Renderable, Colour};
+use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable, Colour};
 
 /// Max vertices to store in a single VBO.
 const MAX_VERTS : usize = 10_000;
@@ -133,13 +133,13 @@ impl BackendGL {
 
                 self.clear(render_target);
             },
-            PipelinePhase::Render { target } => {
+            PipelinePhase::Render { settings, target } => {
                 // We need to render to the given target.
                 let render_target = match target {
                     RenderTarget::Window => frame
                 };
 
-                self.render(render_target, batch);
+                self.render(settings, render_target, batch);
             }
         }
     }
@@ -148,7 +148,7 @@ impl BackendGL {
         render_target.clear_color(0.5, 0.5, 0.5, 1.0);
     }
 
-    fn render(&self, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+    fn render(&self, _settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
         let mut scene = Vec::new();
         for i in (-100..100).map(|x| x as f32) {
             for j in (-100..100).map(|x| x as f32) {
@@ -194,6 +194,7 @@ impl BackendGL {
 
             if idx > 0 {
                 let params = Default::default();
+                
                 render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. idx).unwrap(), &batch.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
             }
         }
