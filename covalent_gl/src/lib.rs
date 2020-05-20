@@ -1,9 +1,9 @@
+use std::rc::Rc;
 use glium;
 use glium::glutin;
-use covalent::cgmath::Vector3;
 use covalent::DisplayHints;
 use covalent::graphics;
-use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable, Colour};
+use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable};
 
 /// Max vertices to store in a single VBO.
 const MAX_VERTS : usize = 10_000;
@@ -149,41 +149,9 @@ impl BackendGL {
     }
 
     fn render(&self, _settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
-        let mut scene = Vec::new();
-        for i in (-100..100).map(|x| x as f32) {
-            for j in (-100..100).map(|x| x as f32) {
-                scene.push(Renderable::Triangle(
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01, y: j * 0.01, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    },
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    },
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    }
-                ));
-                scene.push(Renderable::Triangle(
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01 + 0.008, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    },
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01 + 0.008, y: j * 0.01, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    },
-                    RenderVertex {
-                        pos: Vector3 { x: i * 0.01, y: j * 0.01 + 0.008, z: 0.0 },
-                        col: Colour::new(1.0, 1.0, 1.0)
-                    }
-                ));
-            }
-        }
-
-        let mut it = scene.iter().peekable();
+        use covalent::scene::Node;
+        let scene = covalent::scene::Scene::demo_squares();
+        let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Rc::clone)).peekable();
 
         while let Some(_) = it.peek() {
             let mut vbo = batch.vbo.map_write();
@@ -203,7 +171,7 @@ impl BackendGL {
 
 /// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.
 fn render_lots(
-    it: &mut std::iter::Peekable<std::slice::Iter<'_, Renderable>>,
+    it: &mut std::iter::Peekable<impl Iterator<Item = Rc<Renderable>>>,
     vbo: &mut glium::buffer::WriteMapping<[Vertex]>,
     ibo: &mut glium::buffer::WriteMapping<[u32]>) -> usize {
     let mut current_vertex = 0;
@@ -211,7 +179,7 @@ fn render_lots(
     loop {
         match it.peek() {
             Some(r) => {
-                match r {
+                match **r {
                     Renderable::None => {
                         it.next();
                     },
