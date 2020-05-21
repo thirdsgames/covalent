@@ -36,6 +36,8 @@ impl graphics::Backend for BackendGL {
         let vertex_shader_src = r#"
             #version 140
 
+            uniform mat4 combined;
+
             in vec3 position;
             in uint col;
             
@@ -43,7 +45,7 @@ impl graphics::Backend for BackendGL {
             out vec4 io_col;
 
             void main() {
-                gl_Position = vec4(position, 1.0);
+                gl_Position = combined * vec4(position, 1.0);
                 io_pos = position.xy;
                 io_col = vec4(
                     ((col & uint(0xFF000000)) >> 24) / 255.0f,
@@ -122,6 +124,8 @@ fn conv(v: &RenderVertex) -> Vertex {
     }
 }
 
+static mut I: i32 = 0;
+
 impl BackendGL {
     fn execute_phase(&self, _name: &str, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
         match phase {
@@ -145,10 +149,11 @@ impl BackendGL {
     }
 
     fn clear(&self, render_target: &mut impl glium::Surface) {
-        render_target.clear_color(0.5, 0.5, 0.5, 1.0);
+        render_target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), std::f32::MAX);
     }
 
-    fn render(&self, _settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+    fn render(&self, settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+        unsafe{I += 1;}
         use covalent::scene::Node;
         let scene = covalent::scene::Scene::demo_squares();
         let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Rc::clone)).peekable();
@@ -161,9 +166,23 @@ impl BackendGL {
             drop(ibo);
 
             if idx > 0 {
-                let params = Default::default();
-                
-                render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. idx).unwrap(), &batch.program, &glium::uniforms::EmptyUniforms, &params).unwrap();
+                use covalent::cgmath::Matrix;
+                settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::cgmath::Point3::new(0.0*((unsafe{I} as f32)*0.1).cos(), 0.0*((unsafe{I} as f32)*0.1).sin(), 2.0 + 1.5*((unsafe{I} as f32)*0.01).sin()));
+                let c = settings.cam.read().unwrap().get_combined_matrix().transpose();
+                let combined = [
+                    [c.x.x, c.y.x, c.z.x, c.w.x],
+                    [c.x.y, c.y.y, c.z.y, c.w.y],
+                    [c.x.z, c.y.z, c.z.z, c.w.z],
+                    [c.x.w, c.y.w, c.z.w, c.w.w],
+                ];
+                let uniforms = glium::uniform! {
+                    combined: combined
+                };
+
+                let mut params: glium::DrawParameters = Default::default();
+                params.depth.test = glium::DepthTest::IfLess;
+                params.depth.write = true;
+                render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. idx).unwrap(), &batch.program, &uniforms, &params).unwrap();
             }
         }
     }

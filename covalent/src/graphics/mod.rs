@@ -1,16 +1,17 @@
 mod backend;
-pub use backend::Backend;
+pub use backend::*;
 
 mod render_target;
-pub use render_target::RenderTarget;
+pub use render_target::*;
 
 mod pipeline;
-pub use pipeline::Pipeline;
-pub use pipeline::PipelinePhase;
-pub use pipeline::RenderSettings;
+pub use pipeline::*;
 
 mod colour;
-pub use colour::Colour;
+pub use colour::*;
+
+mod camera;
+pub use camera::*;
 
 use cgmath::Vector3;
 

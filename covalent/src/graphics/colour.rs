@@ -30,10 +30,10 @@ impl Colour {
     /// so you should never need to call it.
     /// This results in undefined behaviour if any colour component is outside of the range [0, 1].
     fn compute_packed(&mut self) {
-        let r = (self.r * 255.0) as u32;
-        let g = (self.g * 255.0) as u32;
-        let b = (self.b * 255.0) as u32;
-        let a = (self.a * 255.0) as u32;
+        let r = (self.r * 255.0).min(255.0).max(0.0) as u32;
+        let g = (self.g * 255.0).min(255.0).max(0.0) as u32;
+        let b = (self.b * 255.0).min(255.0).max(0.0) as u32;
+        let a = (self.a * 255.0).min(255.0).max(0.0) as u32;
         self.packed = r << 24 | g << 16 | b << 8 | a;
     }
 
