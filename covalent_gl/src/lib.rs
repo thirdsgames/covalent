@@ -167,7 +167,7 @@ impl BackendGL {
 
             if idx > 0 {
                 use covalent::cgmath::Matrix;
-                settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::cgmath::Point3::new(0.0*((unsafe{I} as f32)*0.1).cos(), 0.0*((unsafe{I} as f32)*0.1).sin(), 2.0 + 1.5*((unsafe{I} as f32)*0.01).sin()));
+                settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::pt3(1.1, 1.1, 0.3+0.3*((unsafe{I} as f32)*0.01).sin()));
                 let c = settings.cam.read().unwrap().get_combined_matrix().transpose();
                 let combined = [
                     [c.x.x, c.y.x, c.z.x, c.w.x],

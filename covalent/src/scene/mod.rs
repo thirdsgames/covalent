@@ -64,16 +64,16 @@ impl Scene {
         let mut s = Scene::new();
         for i in (-10..10).map(|x| x as f32) {
             for j in (-10..10).map(|x| x as f32) {
-                for k in (0..10).map(|x| x as f32) {
+                for k in (-10..10).map(|x| x as f32) {
                     s.new_root_node_3d().write().unwrap().set_renderable(Rc::new(Renderable::Triangle(
-                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
-                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.01, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
-                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
+                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
+                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
+                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
                     )));
                     s.new_root_node_3d().write().unwrap().set_renderable(Rc::new(Renderable::Triangle(
-                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
-                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.09, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
-                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.1*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
+                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
+                        RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
+                        RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
                     )));
                 }
             }

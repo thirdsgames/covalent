@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use cgmath::{vec3, Point3, Matrix4, Transform, InnerSpace, SquareMatrix};
+use cgmath::{Vector3, Point3, Matrix4, Transform, InnerSpace};
 
 /// A camera is the lens through which your scene can be viewed. This tells covalent how to map the scene in 3D space
 /// onto your screen, a 2D window. The two major types of camera are perspective and orthographic.
@@ -18,6 +18,8 @@ pub trait Camera3D {
 /// large and far things appear small.
 pub struct PerspectiveCamera {
     pos: Point3<f32>,
+    dir: Vector3<f32>,
+    up: Vector3<f32>,
     proj: Cell<Matrix4<f32>>,
     view: Cell<Matrix4<f32>>,
     combined: Cell<Matrix4<f32>>,
@@ -27,9 +29,11 @@ pub struct PerspectiveCamera {
 
 impl PerspectiveCamera {
     /// Constructs a new perspective camera from the arguments supplied.
-    pub fn new(pos: Point3<f32>) -> PerspectiveCamera {
+    pub fn new(pos: Point3<f32>, dir: Vector3<f32>, up: Vector3<f32>) -> PerspectiveCamera {
         PerspectiveCamera {
             pos,
+            dir,
+            up,
             proj: Cell::new(Matrix4::one()),
             view: Cell::new(Matrix4::one()),
             combined: Cell::new(Matrix4::one()),
@@ -40,28 +44,30 @@ impl PerspectiveCamera {
     /// Updates the matrices contained within the camera. Call if you need to retrieve a value from
     /// this camera, but the state is dirty.
     fn update_matrices(&self) {
-        self.proj.set({
-            let mut p = cgmath::perspective(cgmath::Deg(60.0), 1.0, 0.01, 100.0);
-            p.z.z *= -1.0;
-            //p.w.z *= -1.0;
-            p.z.w *= -1.0;
-            p
-        });
-        //println!("Proj: {:?}", self.proj.get());
-        //self.view.set(cgmath::Matrix4::look_at_dir(self.pos, vec3(0.0, 1.0, -1.0).normalize(), vec3(0.0, 1.0, 0.0).normalize()));
-        let negpos = self.pos;
-        self.view.set(cgmath::Matrix4::from_translation(cgmath::Vector3::new(negpos.x, negpos.y, negpos.z)));
-        //println!("View: {:?}", self.view.get());
+        self.proj.set(cgmath::perspective(cgmath::Deg(60.0), 1.0, 0.01, 100.0));
+        self.view.set(cgmath::Matrix4::look_at_dir(self.pos, self.dir, self.up));
         self.combined.set(self.proj.get() * self.view.get());
-        //println!("Combined: {:?}", self.combined.get());
-        //println!("Example: {:?}", self.combined.get().transform_point(cgmath::Point3::new(0.0, 0.0, 0.0)));
-        //println!("Example: {:?}", self.combined.get().transform_point(cgmath::Point3::new(1.0, 0.0, 0.0)));
-        //println!("Example: {:?}", self.combined.get().transform_point(cgmath::Point3::new(0.0, 1.0, 0.0)));
         self.dirty.set(false);
     }
 
+    /// Sets the position that the camera is looking from.
     pub fn set_pos(&mut self, pos: Point3<f32>) {
         self.pos = pos;
+        self.dirty.set(true);
+    }
+
+    /// Sets the direction that the camera is looking towards.
+    /// This will be normalised automatically.
+    pub fn set_dir(&mut self, dir: Vector3<f32>) {
+        self.dir = dir.normalize();
+        self.dirty.set(true);
+    }
+
+    /// Sets the direction pointing upwards from the camera.
+    /// This is normally something like `vec3(0, 0, 1)`.
+    /// This will be normalised automatically.
+    pub fn set_up(&mut self, up: Vector3<f32>) {
+        self.up = up.normalize();
         self.dirty.set(true);
     }
 }
