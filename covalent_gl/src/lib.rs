@@ -1,9 +1,10 @@
 use std::rc::Rc;
 use glium;
 use glium::glutin;
-use covalent::DisplayHints;
+use covalent::{Context, DisplayHints};
 use covalent::graphics;
-use covalent::graphics::{Pipeline, PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable};
+use covalent::scene::Scene;
+use covalent::graphics::{PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable};
 
 /// Max vertices to store in a single VBO.
 const MAX_VERTS : usize = 10_000;
@@ -20,7 +21,7 @@ impl BackendGL {
 }
 
 impl graphics::Backend for BackendGL {
-    fn main_loop(self, dh: DisplayHints, pipeline: Pipeline) {
+    fn main_loop(self, ctx: Context, dh: DisplayHints) {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
@@ -100,8 +101,9 @@ impl graphics::Backend for BackendGL {
                     let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
                     let mut frame = display.draw();
 
-                    for (name, phase) in pipeline.iter() {
-                        self.execute_phase(name, phase, &mut batch, &mut frame);
+                    let (scene, phases) = ctx.render_phases();
+                    for (name, phase) in phases {
+                        self.execute_phase(name, scene, phase, &mut batch, &mut frame);
                     }
                     if let Err(e) = frame.finish() {
                         eprintln!("Error caught when swapping buffers: {:?}", e);
@@ -127,7 +129,7 @@ fn conv(v: &RenderVertex) -> Vertex {
 static mut I: i32 = 0;
 
 impl BackendGL {
-    fn execute_phase(&self, _name: &str, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
+    fn execute_phase(&self, _name: &str, scene: &Scene, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
         match phase {
             PipelinePhase::Clear { target } => {
                 // We need to clear the given target.
@@ -143,7 +145,7 @@ impl BackendGL {
                     RenderTarget::Window => frame
                 };
 
-                self.render(settings, render_target, batch);
+                self.render(settings, scene, render_target, batch);
             }
         }
     }
@@ -152,10 +154,9 @@ impl BackendGL {
         render_target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), std::f32::MAX);
     }
 
-    fn render(&self, settings: &RenderSettings, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
+    fn render(&self, settings: &RenderSettings, scene: &Scene, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
         unsafe{I += 1;}
         use covalent::scene::Node;
-        let scene = covalent::scene::Scene::demo_squares();
         let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Rc::clone)).peekable();
 
         while let Some(_) = it.peek() {
