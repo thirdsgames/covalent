@@ -19,8 +19,13 @@ use cgmath::Vector3;
 pub enum Renderable {
     /// A renderable that renders nothing. Used when a Renderable must be supplied but you don't want to render anything.
     None,
+    
     /// A primitive triangle containing three vertices.
     Triangle(RenderVertex, RenderVertex, RenderVertex),
+
+    /// A GPU-optimised primitive capable of storing large amounts of _unchanging_ render information.
+    /// The internal i64 is left as an implementation-defined feature for the backend to use.
+    Mesh(i64),
 }
 
 /// Contains all the necessary information to define a single vertex.

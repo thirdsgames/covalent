@@ -1,4 +1,6 @@
 use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use glium;
 use glium::glutin;
 use covalent::{Context, DisplayHints};
@@ -11,17 +13,27 @@ const MAX_VERTS : usize = 10_000;
 /// Max indices to store in a single IBO.
 const MAX_INDS : usize = 10_000;
 
-/// BackendGL is a rendering backend for Covalent, using OpenGL.
-pub struct BackendGL;
-
-impl BackendGL {
-    pub fn new() -> BackendGL {
-        BackendGL {}
-    }
+struct MeshGL {
+    vbo: glium::VertexBuffer<Vertex>,
+    ibo: glium::IndexBuffer<u32>,
 }
 
-impl graphics::Backend for BackendGL {
-    fn main_loop(self, ctx: Context, dh: DisplayHints) {
+/// BackendGL is a rendering backend for Covalent, using OpenGL.
+pub struct BackendGL {
+    /// The backend owns the glium display.
+    display: glium::Display,
+
+    /// The glium event loop. This tells us when certain events happen
+    /// (e.g. user resizes window, exits application) as well as when we can render
+    /// a frame to the screen.
+    event_loop: Option<glium::glutin::event_loop::EventLoop<()>>,
+
+    /// This map stores the meshes currently on the GPU.
+    meshes: RefCell<HashMap<i64, MeshGL>>
+}
+
+impl BackendGL {
+    pub fn new(dh: DisplayHints) -> BackendGL {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
@@ -34,6 +46,16 @@ impl graphics::Backend for BackendGL {
         //    window with the events_loop.
         let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
+        BackendGL {
+            display,
+            event_loop: Some(event_loop),
+            meshes: RefCell::from(HashMap::new())
+        }
+    }
+}
+
+impl graphics::Backend for BackendGL {
+    fn main_loop(mut self, ctx: Context) {
         let vertex_shader_src = r#"
             #version 140
 
@@ -70,20 +92,20 @@ impl graphics::Backend for BackendGL {
             }
         "#;
         
-        let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
+        let program = glium::Program::from_source(&self.display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
-        let vbo = glium::VertexBuffer::dynamic(&display, &vec![Vertex {
+        let vbo = glium::VertexBuffer::dynamic(&self.display, &vec![Vertex {
             position: [0.0, 0.0, 0.0],
             col: 0xFFFFFFFF
         }; MAX_VERTS]).unwrap();
-        let ibo = glium::index::IndexBuffer::dynamic(&display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; MAX_INDS]).unwrap();
+        let ibo = glium::index::IndexBuffer::dynamic(&self.display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; MAX_INDS]).unwrap();
         let mut batch = BatchGL {
             vbo: vbo,
             ibo: ibo,
             program: program,
         };
 
-        event_loop.run(move |ev, _, control_flow| {
+        self.event_loop.take().unwrap().run(move |ev, _, control_flow| {
             *control_flow = glutin::event_loop::ControlFlow::Poll;
 
             match ev {
@@ -99,7 +121,7 @@ impl graphics::Backend for BackendGL {
                 // We can now begin rendering the screen.
                 glutin::event::Event::MainEventsCleared => {
                     let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
-                    let mut frame = display.draw();
+                    let mut frame = self.display.draw();
 
                     let (scene, phases) = ctx.render_phases();
                     for (name, phase) in phases {
@@ -115,6 +137,18 @@ impl graphics::Backend for BackendGL {
                 _ => (),
             }
         });
+    }
+
+    fn create_mesh(&self, verts: Vec<RenderVertex>, inds: Vec<u32>) -> Renderable {
+        println!("Creating mesh with {} verts, {} inds", verts.len(), inds.len());
+        let verts1 = verts.iter().map(conv).collect::<Vec<_>>();
+        let mesh = MeshGL {
+            vbo: glium::VertexBuffer::new(&self.display, &verts1).unwrap(),
+            ibo: glium::IndexBuffer::new(&self.display, glium::index::PrimitiveType::TrianglesList, &inds).unwrap()
+        };
+        let idx = 1;  // TODO create random index
+        self.meshes.borrow_mut().insert(idx, mesh);
+        Renderable::Mesh(idx)
     }
 }
 
@@ -159,70 +193,80 @@ impl BackendGL {
         use covalent::scene::Node;
         let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Rc::clone)).peekable();
 
+        use covalent::cgmath::Matrix;
+        settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::pt3(1.1, 1.1, 0.3+0.3*((unsafe{I} as f32)*0.01).sin()));
+        let c = settings.cam.read().unwrap().get_combined_matrix().transpose();
+        let combined = [
+            [c.x.x, c.y.x, c.z.x, c.w.x],
+            [c.x.y, c.y.y, c.z.y, c.w.y],
+            [c.x.z, c.y.z, c.z.z, c.w.z],
+            [c.x.w, c.y.w, c.z.w, c.w.w],
+        ];
+        let uniforms = glium::uniform! {
+            combined: combined
+        };
+
+        let mut params: glium::DrawParameters = Default::default();
+        params.depth.test = glium::DepthTest::IfLess;
+        params.depth.write = true;
+
         while let Some(_) = it.peek() {
             let mut vbo = batch.vbo.map_write();
             let mut ibo = batch.ibo.map_write();
-            let idx = render_lots(&mut it, &mut vbo, &mut ibo);
+            let idx = self.render_lots(&mut it, &mut vbo, &mut ibo, render_target, &batch.program, &uniforms, &params);
             drop(vbo);
             drop(ibo);
 
             if idx > 0 {
-                use covalent::cgmath::Matrix;
-                settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::pt3(1.1, 1.1, 0.3+0.3*((unsafe{I} as f32)*0.01).sin()));
-                let c = settings.cam.read().unwrap().get_combined_matrix().transpose();
-                let combined = [
-                    [c.x.x, c.y.x, c.z.x, c.w.x],
-                    [c.x.y, c.y.y, c.z.y, c.w.y],
-                    [c.x.z, c.y.z, c.z.z, c.w.z],
-                    [c.x.w, c.y.w, c.z.w, c.w.w],
-                ];
-                let uniforms = glium::uniform! {
-                    combined: combined
-                };
-
-                let mut params: glium::DrawParameters = Default::default();
-                params.depth.test = glium::DepthTest::IfLess;
-                params.depth.write = true;
                 render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. idx).unwrap(), &batch.program, &uniforms, &params).unwrap();
             }
         }
     }
-}
 
-/// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.
-fn render_lots(
-    it: &mut std::iter::Peekable<impl Iterator<Item = Rc<Renderable>>>,
-    vbo: &mut glium::buffer::WriteMapping<[Vertex]>,
-    ibo: &mut glium::buffer::WriteMapping<[u32]>) -> usize {
-    let mut current_vertex = 0;
-    let mut current_index = 0;
-    loop {
-        match it.peek() {
-            Some(r) => {
-                match **r {
-                    Renderable::None => {
-                        it.next();
-                    },
-                    Renderable::Triangle(v0, v1, v2) => {
-                        if current_index + 3 >= MAX_INDS || current_vertex + 3 >= MAX_VERTS {
-                            break  // Do not consume the triangle, leave it to the next call to render_lots.
+    /// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.
+    fn render_lots(&self,
+        it: &mut std::iter::Peekable<impl Iterator<Item = Rc<Renderable>>>,
+        vbo: &mut glium::buffer::WriteMapping<[Vertex]>,
+        ibo: &mut glium::buffer::WriteMapping<[u32]>,
+        render_target: &mut impl glium::Surface,
+        program: &glium::Program,
+        uniforms: &impl glium::uniforms::Uniforms,
+        params: &glium::DrawParameters) -> usize {
+        let mut current_vertex = 0;
+        let mut current_index = 0;
+        loop {
+            match it.peek() {
+                Some(r) => {
+                    match **r {
+                        Renderable::None => {
+                            it.next();
+                        },
+                        Renderable::Triangle(v0, v1, v2) => {
+                            if current_index + 3 >= MAX_INDS || current_vertex + 3 >= MAX_VERTS {
+                                break  // Do not consume the triangle, leave it to the next call to render_lots.
+                            }
+                            vbo.set(current_vertex + 0, conv(&v0));
+                            vbo.set(current_vertex + 1, conv(&v1));
+                            vbo.set(current_vertex + 2, conv(&v2));
+                            ibo.set(current_index + 0, (current_vertex + 0) as u32);
+                            ibo.set(current_index + 1, (current_vertex + 1) as u32);
+                            ibo.set(current_index + 2, (current_vertex + 2) as u32);
+                            current_vertex += 3;
+                            current_index += 3;
+                            it.next();
+                        },
+                        Renderable::Mesh(i) => {
+                            let mesh = &self.meshes.borrow()[&i];
+                            render_target.draw(&mesh.vbo, &mesh.ibo, program, uniforms, params).unwrap();
+                            it.next();
                         }
-                        vbo.set(current_vertex + 0, conv(&v0));
-                        vbo.set(current_vertex + 1, conv(&v1));
-                        vbo.set(current_vertex + 2, conv(&v2));
-                        ibo.set(current_index + 0, (current_vertex + 0) as u32);
-                        ibo.set(current_index + 1, (current_vertex + 1) as u32);
-                        ibo.set(current_index + 2, (current_vertex + 2) as u32);
-                        current_vertex += 3;
-                        current_index += 3;
-                        it.next();
                     }
-                }
-            },
-            None => break
+                },
+                None => break
+            }
         }
+        current_index
     }
-    current_index
 }
 
 #[derive(Copy, Clone)]

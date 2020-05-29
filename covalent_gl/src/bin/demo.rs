@@ -6,7 +6,7 @@ fn main() {
     let mut hints = covalent::DisplayHints::new();
     hints.title = String::from("Covalent | Demo");
 
-    let backend = covalent_gl::BackendGL::new();
+    let backend = covalent_gl::BackendGL::new(hints);
 
     let cam = Arc::new(RwLock::new(covalent::graphics::PerspectiveCamera::new(
         covalent::pt3(1.1, 1.1, 0.0),
@@ -23,5 +23,5 @@ fn main() {
         target: covalent::graphics::RenderTarget::Window
     });
 
-    covalent::execute(hints, pipeline, backend);
+    covalent::execute(pipeline, backend);
 }

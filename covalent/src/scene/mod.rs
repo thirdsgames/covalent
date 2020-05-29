@@ -56,7 +56,7 @@ impl Scene {
         n
     }
 
-    pub fn demo_squares() -> Scene {
+    pub fn demo_squares_unoptimised() -> Scene {
         use crate::graphics::{Renderable, RenderVertex, Colour};
         use std::rc::Rc;
         use cgmath::vec3;
@@ -78,6 +78,35 @@ impl Scene {
                 }
             }
         }
+        s
+    }
+
+    pub fn demo_squares(gbackend: &impl crate::graphics::Backend) -> Scene {
+        use crate::graphics::{RenderVertex, Colour};
+        use std::rc::Rc;
+        use cgmath::vec3;
+
+        let mut s = Scene::new();
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        for i in (-10..10).map(|x| x as f32) {
+            for j in (-10..10).map(|x| x as f32) {
+                for k in (-10..10).map(|x| x as f32) {
+                    let v = verts.len() as u32;
+                    verts.push(RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) });
+                    verts.push(RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) });
+                    verts.push(RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) });
+                    verts.push(RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) });
+                    inds.push(v);
+                    inds.push(v+1);
+                    inds.push(v+2);
+                    inds.push(v);
+                    inds.push(v+2);
+                    inds.push(v+3);
+                }
+            }
+        }
+        s.new_root_node_3d().write().unwrap().set_renderable(Rc::new(gbackend.create_mesh(verts, inds)));
         s
     }
 

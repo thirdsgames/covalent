@@ -80,12 +80,13 @@ impl Context {
 /// Construct a Covalent context from the given backend, then executes the application defined by this Covalent context.
 /// Only create a single context during the lifetime of your application,
 /// and only create this context on the main thread!
-pub fn execute(hints: DisplayHints, pipeline: graphics::Pipeline, rb: impl graphics::Backend) {
-    rb.main_loop(Context {
-        frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(32)),
+pub fn execute(pipeline: graphics::Pipeline, gback: impl graphics::Backend) {
+    let scene = scene::Scene::demo_squares(&gback);
+    gback.main_loop(Context {
+        frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(512)),
         graphics_pipeline: pipeline,
-        scene: scene::Scene::demo_squares()
-    }, hints);
+        scene
+    });
 }
 
 #[cfg(test)]
