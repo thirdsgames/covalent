@@ -1,3 +1,6 @@
+use std::time;
+use std::cell::RefCell;
+
 mod display_hints;
 pub use display_hints::DisplayHints;
 
@@ -19,9 +22,48 @@ pub fn pt3<S>(x: S, y: S, z: S) -> cgmath::Point3<S> {
     cgmath::Point3::new(x, y, z)
 }
 
+/// A stopwatch (in covalent) is an object that counts the time between events.
+/// An interpolated stopwatch counts the time between successive events, and calculates the average
+/// time between those events, by storing the times of the last `n` events, where `n` is some arbitrary
+/// constant specified in the stopwatch constructor.
+pub struct InterpolatedStopwatch {
+    times: Vec<time::Instant>,
+    offset: usize
+}
+
+impl InterpolatedStopwatch {
+    pub fn new(interpolation_amount: usize) -> InterpolatedStopwatch {
+        let mut vec = Vec::with_capacity(interpolation_amount);
+        for _ in 0..interpolation_amount {
+            vec.push(time::Instant::now());
+        }
+        InterpolatedStopwatch {
+            times: vec,
+            offset: 0
+        }
+    }
+
+    /// Call this function every time the given event happens.
+    /// You will be able to retrieve the average time between calls to `tick`
+    /// using the `average_time` function.
+    pub fn tick(&mut self) {
+        self.times[self.offset] = time::Instant::now();
+        self.offset = (self.offset + 1) % self.times.len();
+    }
+
+    pub fn average_time(&self) -> time::Duration {
+        let prev_offset = match self.offset {
+            0 => self.times.len() - 1,
+            _ => self.offset - 1
+        };
+        self.times[prev_offset].duration_since(self.times[self.offset]).div_f64(self.times.len() as f64)
+    }
+}
+
 /// A context that encapsulates the behaviour of an application run with covalent.
 /// This contains all the functions that the graphics backend will execute when the given event occurs.
 pub struct Context {
+    frame_stopwatch: RefCell<InterpolatedStopwatch>,
     graphics_pipeline: graphics::Pipeline,
     scene: scene::Scene
 }
@@ -29,6 +71,8 @@ pub struct Context {
 impl Context {
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.
     pub fn render_phases<'a>(&'a self) -> (&scene::Scene, std::collections::btree_map::Values<'a, i32, (String, graphics::PipelinePhase)>) {
+        self.frame_stopwatch.borrow_mut().tick();
+        println!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
         (&self.scene, self.graphics_pipeline.iter())
     }
 }
@@ -38,6 +82,7 @@ impl Context {
 /// and only create this context on the main thread!
 pub fn execute(hints: DisplayHints, pipeline: graphics::Pipeline, rb: impl graphics::Backend) {
     rb.main_loop(Context {
+        frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(32)),
         graphics_pipeline: pipeline,
         scene: scene::Scene::demo_squares()
     }, hints);
