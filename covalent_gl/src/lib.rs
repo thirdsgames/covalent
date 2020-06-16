@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use glium;
@@ -124,6 +124,9 @@ impl graphics::Backend for BackendGL {
                     let mut frame = self.display.draw();
 
                     let (scene, phases) = ctx.render_phases();
+
+                    scene.tick_handler().write().unwrap().handle(covalent::scene::TickEvent {});
+
                     for (name, phase) in phases {
                         self.execute_phase(name, scene, phase, &mut batch, &mut frame);
                     }
@@ -191,7 +194,7 @@ impl BackendGL {
     fn render(&self, settings: &RenderSettings, scene: &Scene, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
         unsafe{I += 1;}
         use covalent::scene::Node;
-        let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Rc::clone)).peekable();
+        let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Arc::clone)).peekable();
 
         use covalent::cgmath::Matrix;
         settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::pt3(1.1, 1.1, 0.3+0.3*((unsafe{I} as f32)*0.01).sin()));
@@ -225,7 +228,7 @@ impl BackendGL {
 
     /// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.
     fn render_lots(&self,
-        it: &mut std::iter::Peekable<impl Iterator<Item = Rc<Renderable>>>,
+        it: &mut std::iter::Peekable<impl Iterator<Item = Arc<Renderable>>>,
         vbo: &mut glium::buffer::WriteMapping<[Vertex]>,
         ibo: &mut glium::buffer::WriteMapping<[u32]>,
         render_target: &mut impl glium::Surface,
