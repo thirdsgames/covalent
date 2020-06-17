@@ -82,6 +82,7 @@ impl Context {
 /// and only create this context on the main thread!
 pub fn execute(pipeline: graphics::Pipeline, gback: impl graphics::Backend) {
     let scene = scene::Scene::demo_squares(&gback);
+    scene.run_tick_thread();
     gback.main_loop(Context {
         frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(512)),
         graphics_pipeline: pipeline,

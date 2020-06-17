@@ -6,7 +6,7 @@ use crate::graphics::Renderable;
 
 /// The node is the root of anything that is in the scene.
 /// Nodes have a list of `Instance`s, which represent the functionality of the node.
-pub trait Node {
+pub trait Node: Send + Sync {
     /// This is an internal function. Do not call this yourself!
     /// Alternative: `Scene::new_node_3d`.
     /// 
@@ -35,23 +35,21 @@ struct Listener<N, B, E>
     n: Weak<RwLock<N>>,
     b: Weak<RwLock<B>>,
     /// Has the same lifetime as the node that owns the behaviour that created the listener.
-    func: Box<dyn Fn(&mut N, &mut B, &E)>
+    func: Box<dyn Fn(&mut N, &mut B, &E) + Send + Sync>
 }
 
-impl <N, B, E> Listener<N, B, E>
+/// Listens for any events coming from the given event handler. When an event is found, calls the provided function with the given node, behaviour and function.
+pub fn listen<N, B, E>(handler: &mut EventHandler<E>, n: Weak<RwLock<N>>, b: Weak<RwLock<B>>, func: &'static (impl Fn(&mut N, &mut B, &E) + Send + Sync))
     where N: Node + 'static, B: Behaviour<N> + 'static, E: Event + 'static {
-    /// Creates and registers a new listener with the given event handler, node, behaviour and function.
-    pub fn new(handler: &mut EventHandler<E>, n: Weak<RwLock<N>>, b: Weak<RwLock<B>>, func: &'static impl Fn(&mut N, &mut B, &E)) {
-        let l = Listener {
-            id: handler.new_id(),
-            n, b,
-            func: Box::new(func)
-        };
-        handler.set.insert(l.id, Box::new(l));
-    }
+    let l = Listener {
+        id: handler.new_id(),
+        n, b,
+        func: Box::new(func)
+    };
+    handler.set.insert(l.id, Box::new(l));
 }
 
-trait AnyTypeListener<E: Event> {
+trait AnyTypeListener<E: Event>: Send + Sync {
     fn execute(&self, e: &E) -> bool;
 }
 
@@ -121,7 +119,7 @@ impl <E: Event> EventHandler<E> {
 pub struct BehaviourID(i32);
 
 /// Behaviours listen for events to execute event-driven code.
-pub trait Behaviour<N: Node> {
+pub trait Behaviour<N: Node>: Send + Sync {
 }
 
 pub struct TickEvent {
@@ -137,7 +135,7 @@ pub struct TickDebugBehaviour {
 impl TickDebugBehaviour {
     pub fn create<N: Node + 'static>(scene: &mut Scene, n: Weak<RwLock<N>>) -> Arc<RwLock<Self>> {
         let b = Arc::new(RwLock::new(TickDebugBehaviour { tick_num: 0 }));
-        Listener::new(&mut scene.tick_handler().write().unwrap(), n, Arc::downgrade(&b), &|n, b, e| {
+        listen(&mut scene.tick_handler().write().unwrap(), n, Arc::downgrade(&b), &|n, b, e| {
             b.tick_num += 1;
             println!("Tick {}", b.tick_num);
         });

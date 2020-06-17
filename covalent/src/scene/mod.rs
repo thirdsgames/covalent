@@ -18,6 +18,15 @@ impl Scene {
         }
     }
 
+    pub fn run_tick_thread(&self) {
+        let tick_handler_clone = Arc::clone(&self.tick_handler);
+        std::thread::spawn(move || {
+            loop {
+                tick_handler_clone.write().unwrap().handle(TickEvent {});
+            }
+        });
+    }
+
     /// Creates a new 3D node and adds it to the scene.
     pub fn new_node_3d(&mut self) -> Arc<RwLock<Node3D>> {
         let n = Node3D::new_default();

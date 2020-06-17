@@ -125,8 +125,6 @@ impl graphics::Backend for BackendGL {
 
                     let (scene, phases) = ctx.render_phases();
 
-                    scene.tick_handler().write().unwrap().handle(covalent::scene::TickEvent {});
-
                     for (name, phase) in phases {
                         self.execute_phase(name, scene, phase, &mut batch, &mut frame);
                     }
