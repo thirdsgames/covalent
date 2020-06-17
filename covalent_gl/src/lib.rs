@@ -120,7 +120,10 @@ impl graphics::Backend for BackendGL {
                 // All events have been successfully polled.
                 // We can now begin rendering the screen.
                 glutin::event::Event::MainEventsCleared => {
-                    let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
+                    // For information about function invocation order,
+                    // please see the documentation for `covalent::Context`.
+                    ctx.begin_frame();
+
                     let mut frame = self.display.draw();
 
                     let (scene, phases) = ctx.render_phases();
@@ -132,8 +135,7 @@ impl graphics::Backend for BackendGL {
                         eprintln!("Error caught when swapping buffers: {:?}", e);
                     }
 
-                    // Simulate vsync by waiting 1/60 of a second.
-                    *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
+                    ctx.end_frame();
                 }
                 _ => (),
             }

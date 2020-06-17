@@ -11,3 +11,5 @@ repository = "https://github.com/thirdsgames/covalent"
 
 [dependencies]
 cgmath = "^0.17.0"
+num_cpus = "^1.13.0"
+crossbeam = "^0.7.3"

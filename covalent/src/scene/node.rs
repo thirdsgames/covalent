@@ -83,19 +83,22 @@ impl <N, B, E> AnyTypeListener<E> for Listener<N, B, E>
 pub trait Event {}
 
 pub struct EventHandler<E: Event> {
+    next_id: ListenerID,
     set: HashMap<ListenerID, Box<dyn AnyTypeListener<E>>>
 }
 
 impl <E: Event> EventHandler<E> {
     pub fn new() -> EventHandler<E> {
         EventHandler {
+            next_id: 0,
             set: HashMap::new()
         }
     }
 
-    fn new_id(&self) -> ListenerID {
-        // FIXME
-        0
+    fn new_id(&mut self) -> ListenerID {
+        let id = self.next_id;
+        self.next_id += 1;
+        id
     }
 
     /// Handle the given event by passing it through all provided listeners.
@@ -114,9 +117,6 @@ impl <E: Event> EventHandler<E> {
         }
     }
 }
-
-#[derive(Hash)]
-pub struct BehaviourID(i32);
 
 /// Behaviours listen for events to execute event-driven code.
 pub trait Behaviour<N: Node>: Send + Sync {
