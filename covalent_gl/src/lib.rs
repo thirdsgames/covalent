@@ -1,17 +1,17 @@
-use std::sync::Arc;
-use std::cell::RefCell;
-use std::collections::HashMap;
+use covalent::graphics;
+use covalent::graphics::{PipelinePhase, RenderSettings, RenderTarget, RenderVertex, Renderable};
+use covalent::scene::Scene;
+use covalent::{Context, DisplayHints};
 use glium;
 use glium::glutin;
-use covalent::{Context, DisplayHints};
-use covalent::graphics;
-use covalent::scene::Scene;
-use covalent::graphics::{PipelinePhase, RenderTarget, RenderSettings, RenderVertex, Renderable};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Max vertices to store in a single VBO.
-const MAX_VERTS : usize = 10_000;
+const MAX_VERTS: usize = 10_000;
 /// Max indices to store in a single IBO.
-const MAX_INDS : usize = 10_000;
+const MAX_INDS: usize = 10_000;
 
 struct MeshGL {
     vbo: glium::VertexBuffer<Vertex>,
@@ -29,7 +29,7 @@ pub struct BackendGL {
     event_loop: Option<glium::glutin::event_loop::EventLoop<()>>,
 
     /// This map stores the meshes currently on the GPU.
-    meshes: RefCell<HashMap<i64, MeshGL>>
+    meshes: RefCell<HashMap<i64, MeshGL>>,
 }
 
 impl BackendGL {
@@ -49,7 +49,7 @@ impl BackendGL {
         BackendGL {
             display,
             event_loop: Some(event_loop),
-            meshes: RefCell::from(HashMap::new())
+            meshes: RefCell::from(HashMap::new()),
         }
     }
 }
@@ -91,65 +91,95 @@ impl graphics::Backend for BackendGL {
                 color = io_col;
             }
         "#;
-        
-        let program = glium::Program::from_source(&self.display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
-        let vbo = glium::VertexBuffer::dynamic(&self.display, &vec![Vertex {
-            position: [0.0, 0.0, 0.0],
-            col: 0xFFFFFFFF
-        }; MAX_VERTS]).unwrap();
-        let ibo = glium::index::IndexBuffer::dynamic(&self.display, glium::index::PrimitiveType::TrianglesList, &vec![0u32; MAX_INDS]).unwrap();
+        let program = glium::Program::from_source(
+            &self.display,
+            vertex_shader_src,
+            fragment_shader_src,
+            None,
+        )
+        .unwrap();
+
+        let vbo = glium::VertexBuffer::dynamic(
+            &self.display,
+            &vec![
+                Vertex {
+                    position: [0.0, 0.0, 0.0],
+                    col: 0xFFFFFFFF
+                };
+                MAX_VERTS
+            ],
+        )
+        .unwrap();
+        let ibo = glium::index::IndexBuffer::dynamic(
+            &self.display,
+            glium::index::PrimitiveType::TrianglesList,
+            &vec![0u32; MAX_INDS],
+        )
+        .unwrap();
         let mut batch = BatchGL {
             vbo: vbo,
             ibo: ibo,
             program: program,
         };
 
-        self.event_loop.take().unwrap().run(move |ev, _, control_flow| {
-            *control_flow = glutin::event_loop::ControlFlow::Poll;
+        self.event_loop
+            .take()
+            .unwrap()
+            .run(move |ev, _, control_flow| {
+                *control_flow = glutin::event_loop::ControlFlow::Poll;
 
-            match ev {
-                glutin::event::Event::WindowEvent { event, .. } => match event {
-                    glutin::event::WindowEvent::CloseRequested => {
-                        *control_flow = glutin::event_loop::ControlFlow::Exit;
-                        return;
+                match ev {
+                    glutin::event::Event::WindowEvent { event, .. } => match event {
+                        glutin::event::WindowEvent::CloseRequested => {
+                            *control_flow = glutin::event_loop::ControlFlow::Exit;
+                            return;
+                        }
+                        _ => return,
                     },
-                    _ => return,
-                },
 
-                // All events have been successfully polled.
-                // We can now begin rendering the screen.
-                glutin::event::Event::MainEventsCleared => {
-                    // For information about function invocation order,
-                    // please see the documentation for `covalent::Context`.
-                    ctx.begin_frame();
+                    // All events have been successfully polled.
+                    // We can now begin rendering the screen.
+                    glutin::event::Event::MainEventsCleared => {
+                        // For information about function invocation order,
+                        // please see the documentation for `covalent::Context`.
+                        ctx.begin_frame();
 
-                    let mut frame = self.display.draw();
+                        let mut frame = self.display.draw();
 
-                    let (scene, phases) = ctx.render_phases();
+                        let (scene, phases) = ctx.render_phases();
 
-                    for (name, phase) in phases {
-                        self.execute_phase(name, scene, phase, &mut batch, &mut frame);
+                        for (name, phase) in phases {
+                            self.execute_phase(name, scene, phase, &mut batch, &mut frame);
+                        }
+                        if let Err(e) = frame.finish() {
+                            eprintln!("Error caught when swapping buffers: {:?}", e);
+                        }
+
+                        ctx.end_frame();
                     }
-                    if let Err(e) = frame.finish() {
-                        eprintln!("Error caught when swapping buffers: {:?}", e);
-                    }
-
-                    ctx.end_frame();
+                    _ => (),
                 }
-                _ => (),
-            }
-        });
+            });
     }
 
     fn create_mesh(&self, verts: Vec<RenderVertex>, inds: Vec<u32>) -> Renderable {
-        println!("Creating mesh with {} verts, {} inds", verts.len(), inds.len());
+        println!(
+            "Creating mesh with {} verts, {} inds",
+            verts.len(),
+            inds.len()
+        );
         let verts1 = verts.iter().map(conv).collect::<Vec<_>>();
         let mesh = MeshGL {
             vbo: glium::VertexBuffer::new(&self.display, &verts1).unwrap(),
-            ibo: glium::IndexBuffer::new(&self.display, glium::index::PrimitiveType::TrianglesList, &inds).unwrap()
+            ibo: glium::IndexBuffer::new(
+                &self.display,
+                glium::index::PrimitiveType::TrianglesList,
+                &inds,
+            )
+            .unwrap(),
         };
-        let idx = 1;  // TODO create random index
+        let idx = 1; // TODO create random index
         self.meshes.borrow_mut().insert(idx, mesh);
         Renderable::Mesh(idx)
     }
@@ -159,27 +189,34 @@ impl graphics::Backend for BackendGL {
 fn conv(v: &RenderVertex) -> Vertex {
     Vertex {
         position: [v.pos.x, v.pos.y, v.pos.z],
-        col: v.col.packed()
+        col: v.col.packed(),
     }
 }
 
 static mut I: i32 = 0;
 
 impl BackendGL {
-    fn execute_phase(&self, _name: &str, scene: &Scene, phase: &PipelinePhase, batch: &mut BatchGL, frame: &mut glium::Frame) {
+    fn execute_phase(
+        &self,
+        _name: &str,
+        scene: &Scene,
+        phase: &PipelinePhase,
+        batch: &mut BatchGL,
+        frame: &mut glium::Frame,
+    ) {
         match phase {
             PipelinePhase::Clear { target } => {
                 // We need to clear the given target.
                 let render_target = match target {
-                    RenderTarget::Window => frame
+                    RenderTarget::Window => frame,
                 };
 
                 self.clear(render_target);
-            },
+            }
             PipelinePhase::Render { settings, target } => {
                 // We need to render to the given target.
                 let render_target = match target {
-                    RenderTarget::Window => frame
+                    RenderTarget::Window => frame,
                 };
 
                 self.render(settings, scene, render_target, batch);
@@ -191,14 +228,46 @@ impl BackendGL {
         render_target.clear_color_and_depth((0.5, 0.5, 0.5, 1.0), std::f32::MAX);
     }
 
-    fn render(&self, settings: &RenderSettings, scene: &Scene, render_target: &mut impl glium::Surface, batch: &mut BatchGL) {
-        unsafe{I += 1;}
+    fn render(
+        &self,
+        settings: &RenderSettings,
+        scene: &Scene,
+        render_target: &mut impl glium::Surface,
+        batch: &mut BatchGL,
+    ) {
+        unsafe {
+            I += 1;
+        }
         use covalent::scene::Node;
-        let mut it = scene.iter_3d().filter_map(|node| node.read().unwrap().get_renderable().as_ref().map(Arc::clone)).peekable();
+        let mut it = scene
+            .iter_3d()
+            .filter_map(|node| {
+                node.read()
+                    .unwrap()
+                    .renderable
+                    .as_ref()
+                    .map(Arc::clone)
+            })
+            .peekable();
 
         use covalent::cgmath::Matrix;
-        settings.cam.write().unwrap().as_perspective_camera().unwrap().set_pos(covalent::pt3(1.1, 1.1, 0.3+0.3*((unsafe{I} as f32)*0.01).sin()));
-        let c = settings.cam.read().unwrap().get_combined_matrix().transpose();
+        settings
+            .cam
+            .write()
+            .unwrap()
+            .as_perspective_camera()
+            .unwrap()
+            .set_pos(covalent::pt3(
+                1.1,
+                1.1,
+                0.3 + 0.3 * ((unsafe { I } as f32) * 0.01).sin(),
+            ));
+        let c = settings
+            .cam
+            .read()
+            .unwrap()
+            .get_combined_matrix()
+            .transpose();
         let combined = [
             [c.x.x, c.y.x, c.z.x, c.w.x],
             [c.x.y, c.y.y, c.z.y, c.w.y],
@@ -216,25 +285,43 @@ impl BackendGL {
         while let Some(_) = it.peek() {
             let mut vbo = batch.vbo.map_write();
             let mut ibo = batch.ibo.map_write();
-            let idx = self.render_lots(&mut it, &mut vbo, &mut ibo, render_target, &batch.program, &uniforms, &params);
+            let idx = self.render_lots(
+                &mut it,
+                &mut vbo,
+                &mut ibo,
+                render_target,
+                &batch.program,
+                &uniforms,
+                &params,
+            );
             drop(vbo);
             drop(ibo);
 
             if idx > 0 {
-                render_target.draw(&batch.vbo, &batch.ibo.slice(0 .. idx).unwrap(), &batch.program, &uniforms, &params).unwrap();
+                render_target
+                    .draw(
+                        &batch.vbo,
+                        &batch.ibo.slice(0..idx).unwrap(),
+                        &batch.program,
+                        &uniforms,
+                        &params,
+                    )
+                    .unwrap();
             }
         }
     }
 
     /// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.
-    fn render_lots(&self,
+    fn render_lots(
+        &self,
         it: &mut std::iter::Peekable<impl Iterator<Item = Arc<Renderable>>>,
         vbo: &mut glium::buffer::WriteMapping<[Vertex]>,
         ibo: &mut glium::buffer::WriteMapping<[u32]>,
         render_target: &mut impl glium::Surface,
         program: &glium::Program,
         uniforms: &impl glium::uniforms::Uniforms,
-        params: &glium::DrawParameters) -> usize {
+        params: &glium::DrawParameters,
+    ) -> usize {
         let mut current_vertex = 0;
         let mut current_index = 0;
         loop {
@@ -243,10 +330,10 @@ impl BackendGL {
                     match **r {
                         Renderable::None => {
                             it.next();
-                        },
+                        }
                         Renderable::Triangle(v0, v1, v2) => {
                             if current_index + 3 >= MAX_INDS || current_vertex + 3 >= MAX_VERTS {
-                                break  // Do not consume the triangle, leave it to the next call to render_lots.
+                                break; // Do not consume the triangle, leave it to the next call to render_lots.
                             }
                             vbo.set(current_vertex + 0, conv(&v0));
                             vbo.set(current_vertex + 1, conv(&v1));
@@ -257,15 +344,17 @@ impl BackendGL {
                             current_vertex += 3;
                             current_index += 3;
                             it.next();
-                        },
+                        }
                         Renderable::Mesh(i) => {
                             let mesh = &self.meshes.borrow()[&i];
-                            render_target.draw(&mesh.vbo, &mesh.ibo, program, uniforms, params).unwrap();
+                            render_target
+                                .draw(&mesh.vbo, &mesh.ibo, program, uniforms, params)
+                                .unwrap();
                             it.next();
                         }
                     }
-                },
-                None => break
+                }
+                None => break,
             }
         }
         current_index
@@ -276,7 +365,7 @@ impl BackendGL {
 #[repr(C)]
 struct Vertex {
     position: [f32; 3],
-    col: u32
+    col: u32,
 }
 glium::implement_vertex!(Vertex, position, col);
 

@@ -1,6 +1,6 @@
-use std::sync::{Arc, RwLock};
 use covalent;
 use covalent_gl;
+use std::sync::{Arc, RwLock};
 
 fn main() {
     let mut hints = covalent::DisplayHints::new();
@@ -15,13 +15,21 @@ fn main() {
     )));
 
     let mut pipeline = covalent::graphics::Pipeline::new();
-    pipeline.add_phase(0, String::from("Clear"), covalent::graphics::PipelinePhase::Clear {
-        target: covalent::graphics::RenderTarget::Window
-    });
-    pipeline.add_phase(100, String::from("Render"), covalent::graphics::PipelinePhase::Render {
-        settings: covalent::graphics::RenderSettings::new(cam),
-        target: covalent::graphics::RenderTarget::Window
-    });
+    pipeline.add_phase(
+        0,
+        String::from("Clear"),
+        covalent::graphics::PipelinePhase::Clear {
+            target: covalent::graphics::RenderTarget::Window,
+        },
+    );
+    pipeline.add_phase(
+        100,
+        String::from("Render"),
+        covalent::graphics::PipelinePhase::Render {
+            settings: covalent::graphics::RenderSettings::new(cam),
+            target: covalent::graphics::RenderTarget::Window,
+        },
+    );
 
     covalent::execute(pipeline, backend);
 }
