@@ -8,6 +8,8 @@ use rayon::prelude::*;
 /// The node is the root of anything that is in the scene.
 /// Nodes have a list of `Behaviour`s, which represent the functionality of the node.
 pub struct Node {
+    /// Refers to this node.
+    self_ref: Weak<RwLock<Self>>,
     /// The position of the node.
     pos: Vector3<f32>,
     /// The rotation of the node.
@@ -31,7 +33,8 @@ impl Node {
     /// Creates a new node with default settings and no instances or renderable.
     /// Does not implement `Default`: we want to encapsulate every node in an `Arc<RwLock<>>`.
     pub(crate) fn default() -> Arc<RwLock<Self>> {
-        Arc::new(RwLock::new(Node {
+        let node = Arc::new(RwLock::new(Node {
+            self_ref: Weak::new(),
             pos: vec3(0.0, 0.0, 0.0),
             rot: Quaternion::new(1.0, 0.0, 0.0, 0.0),
             scl: vec3(1.0, 1.0, 1.0),
@@ -40,7 +43,9 @@ impl Node {
             behaviours: Vec::new(),
 
             renderable: None
-        }))
+        }));
+        node.write().unwrap().self_ref = Arc::downgrade(&node);
+        return node;
     }
 }
 
@@ -50,19 +55,21 @@ type ListenerID = i32;
 struct Listener<B, E>
     where B: Behaviour, E: Event {
     id: ListenerID,
+    n: Weak<RwLock<Node>>,
     b: Weak<RwLock<B>>,
     /// Has the same lifetime as the node that owns the behaviour that created the listener.
-    func: Box<dyn Fn(&mut B, &E) + Send + Sync>
+    func: Box<dyn Fn(&mut Node, &mut B, &E) + Send + Sync>
 }
 
 impl Node {
     /// Listens for any events coming from the given event handler. When an event is found, it calls the
     /// provided function with the given behaviour, and the event that was detected.
-    pub fn listen<B, E>(&mut self, handler: &Arc<RwLock<EventHandler<E>>>, b: Arc<RwLock<B>>, func: &'static (impl Fn(&mut B, &E) + Send + Sync))
+    pub fn listen<B, E>(&mut self, handler: &Arc<RwLock<EventHandler<E>>>, b: Arc<RwLock<B>>, func: &'static (impl Fn(&mut Node, &mut B, &E) + Send + Sync))
         where B: Behaviour + 'static, E: Event + 'static {
 
         let l = Listener {
             id: handler.write().unwrap().new_id(),
+            n: Weak::clone(&self.self_ref),
             b: Arc::downgrade(&b),
             func: Box::new(func)
         };
@@ -86,13 +93,20 @@ impl <B, E> AnyTypeListener<E> for Listener<B, E>
     /// In this case, the listener can never fire. The function then returns true without doing anything.
     /// Otherwise, the function will fire, and false will be returned.
     fn execute(&self, e: &E) -> bool {
-        match self.b.upgrade() {
+        match self.n.upgrade() {
             None => {
                 true
             },
-            Some(b1) => {
-                (*self.func)(&mut b1.write().unwrap(), e);
-                false
+            Some(n1) => {
+                match self.b.upgrade() {
+                    None => {
+                        true
+                    },
+                    Some(b1) => {
+                        (*self.func)(&mut n1.write().unwrap(), &mut b1.write().unwrap(), e);
+                        false
+                    }
+                }
             }
         }
     }
@@ -155,12 +169,14 @@ pub struct TickDebugBehaviour {
 
 impl TickDebugBehaviour {
     pub fn new(scene: &mut Scene, node: Arc<RwLock<Node>>) {
-        let b = TickDebugBehaviour { node: Arc::downgrade(&node), tick_num: 0 };
-        let b1 = Arc::new(RwLock::new(b));
+        let behaviour = Arc::new(RwLock::new(TickDebugBehaviour {
+            node: Arc::downgrade(&node),
+            tick_num: 0
+        }));
 
-        node.write().unwrap().listen(scene.tick_handler(), Arc::clone(&b1), &|b2, e| {
-            b2.tick_num += 1;
-            println!("Tick {}", b2.tick_num);
+        node.write().unwrap().listen(scene.tick_handler(), Arc::clone(&behaviour), &|n, b, e| {
+            b.tick_num += 1;
+            println!("Tick {}", b.tick_num);
         });
     }
 }
