@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::sync::{RwLock, Arc, Weak};
 use cgmath::{vec3, Vector3, Quaternion, Matrix4, Transform};
 use crate::graphics::Renderable;
-use std::borrow::{BorrowMut, Borrow};
 
 /// The node is the root of anything that is in the scene.
 /// Nodes have a list of `Behaviour`s, which represent the functionality of the node.
@@ -50,7 +49,7 @@ type ListenerID = i32;
 struct Listener<B, E>
     where B: Behaviour, E: Event {
     id: ListenerID,
-    b: RwLock<B>,
+    b: Weak<RwLock<B>>,
     /// Has the same lifetime as the node that owns the behaviour that created the listener.
     func: Box<dyn Fn(&mut B, &E) + Send + Sync>
 }
@@ -58,15 +57,16 @@ struct Listener<B, E>
 impl Node {
     /// Listens for any events coming from the given event handler. When an event is found, it calls the
     /// provided function with the given behaviour, and the event that was detected.
-    pub fn listen<B, E>(&mut self, handler: &Arc<RwLock<EventHandler<E>>>, b: B, func: &'static (impl Fn(&mut B, &E) + Send + Sync))
+    pub fn listen<B, E>(&mut self, handler: &Arc<RwLock<EventHandler<E>>>, b: Arc<RwLock<B>>, func: &'static (impl Fn(&mut B, &E) + Send + Sync))
         where B: Behaviour + 'static, E: Event + 'static {
 
         let l = Listener {
             id: handler.write().unwrap().new_id(),
-            b: RwLock::new(b),
+            b: Arc::downgrade(&b),
             func: Box::new(func)
         };
         handler.write().unwrap().set.insert(l.id, Box::new(l));
+        self.behaviours.push(b);
     }
 }
 
@@ -85,8 +85,15 @@ impl <B, E> AnyTypeListener<E> for Listener<B, E>
     /// In this case, the listener can never fire. The function then returns true without doing anything.
     /// Otherwise, the function will fire, and false will be returned.
     fn execute(&self, e: &E) -> bool {
-        (*self.func)(&mut self.b.write().unwrap(), e);
-        false
+        match self.b.upgrade() {
+            None => {
+                true
+            },
+            Some(b1) => {
+                (*self.func)(&mut b1.write().unwrap(), e);
+                false
+            }
+        }
     }
 }
 
@@ -148,8 +155,9 @@ pub struct TickDebugBehaviour {
 impl TickDebugBehaviour {
     pub fn new(scene: &mut Scene, node: Arc<RwLock<Node>>) {
         let b = TickDebugBehaviour { node: Arc::downgrade(&node), tick_num: 0 };
+        let b1 = Arc::new(RwLock::new(b));
 
-        node.write().unwrap().borrow_mut().listen(scene.tick_handler(), b, &|b2, e| {
+        node.write().unwrap().listen(scene.tick_handler(), Arc::clone(&b1), &|b2, e| {
             b2.tick_num += 1;
             println!("Tick {}", b2.tick_num);
         });
