@@ -88,87 +88,30 @@ impl InterpolatedStopwatch {
 pub struct Context {
     frame_stopwatch: RefCell<InterpolatedStopwatch>,
     graphics_pipeline: graphics::Pipeline,
-    scene: scene::Scene,
-    work_channel: crossbeam::channel::Sender<Option<Task>>,
-    work_barrier: Arc<Barrier>,
-    worker_thread_count: usize
-}
-
-/// Encapsulates a task that can be sent to a worker thread to be executed.
-type Task = Box<dyn FnOnce() + Send>;
-
-/// Encapsulates a generic worker thread that can be sent some code to execute.
-/// When the worker thread is sent `Nothing`, it will wait on the supplied barrier, so that
-/// we can wait for all worker threads to finish computation before doing something.
-fn new_worker(index: usize, r: crossbeam::channel::Receiver<Option<Task>>, b: Arc<Barrier>) {
-    println!("Spawning worker thread #{}", index);
-    std::thread::Builder::new().name(format!("Worker #{}", index)).spawn(move || work_func(r, b)).unwrap();
-}
-
-/// The main loop of worker threads.
-fn work_func(r: crossbeam::channel::Receiver<Option<Task>>, b: Arc<Barrier>) {
-    for t in r {
-        match t {
-            Some(task) => {
-                task();
-            }
-            _ => {
-                b.wait();
-            }
-        }
-    }
+    scene: scene::Scene
 }
 
 impl Context {
-    // Synchronises all worker threads. By calling this function, all pending tasks
-    // are completed, and the work channel will end up empty.
-    fn wait_all(&self) {
-        for _ in 0..self.worker_thread_count {
-            self.work_channel.send(None).unwrap();
-        }
-        self.work_barrier.wait();
-    }
-
     fn new(pipeline: graphics::Pipeline, scene: scene::Scene) -> Context {
-        let (s, r) = crossbeam::channel::unbounded();
-
-        let worker_thread_count = num_cpus::get();
-        // When we finish telling the worker threads to do more tasks, we need to make sure they
-        // are all allowed to complete their job before we do other things.
-        // The function wait_all uses this barrier to synchronise the worker threads for this purpose.
-        let b = Arc::new(Barrier::new(worker_thread_count + 1));
-
-        let c = Context {
+        Context {
             frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(512)),
             graphics_pipeline: pipeline,
-            scene,
-            work_channel: s,
-            work_barrier: Arc::clone(&b),
-            worker_thread_count
-        };
-
-        for i in 0..worker_thread_count {
-            new_worker(i, r.clone(), Arc::clone(&b));
+            scene
         }
-
-        c
     }
 
     /// Should be called by the graphics backend as soon as event handling has been completed.
     /// This signals to covalent that it can start to process a frame.
     pub fn begin_frame(&self) {
         // Execute pre-frame actions.
-        self.wait_all();
-        
+
         // Asynchronously process frame.
-        let tick_handler = Arc::clone(&self.scene.tick_handler());
-        self.work_channel.send(Some(Box::new(move || tick_handler.write().unwrap().handle(scene::TickEvent {})))).unwrap();
+        self.scene.tick_handler().write().unwrap().handle(scene::TickEvent {});
     }
     
     /// Should be called by the graphics backend as soon as rendering the frame is complete.
     pub fn end_frame(&self) {
         // Execute post-frame actions.
-        self.wait_all();
     }
 
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.

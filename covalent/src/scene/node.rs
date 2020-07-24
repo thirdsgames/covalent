@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::{RwLock, Arc, Weak};
 use cgmath::{vec3, Vector3, Quaternion, Matrix4, Transform};
 use crate::graphics::Renderable;
+use rayon::prelude::*;
 
 /// The node is the root of anything that is in the scene.
 /// Nodes have a list of `Behaviour`s, which represent the functionality of the node.
@@ -98,7 +99,7 @@ impl <B, E> AnyTypeListener<E> for Listener<B, E>
 }
 
 /// A generic event. See `EventHandler` for more information.
-pub trait Event {}
+pub trait Event: Send + Sync {}
 
 pub struct EventHandler<E: Event> {
     next_id: ListenerID,
@@ -121,7 +122,7 @@ impl <E: Event> EventHandler<E> {
 
     /// Handle the given event by passing it through all provided listeners.
     pub fn handle(&mut self, e: E) {
-        let to_remove: Vec<ListenerID> = self.set.iter().filter_map(|(k, v)| {
+        let to_remove: Vec<ListenerID> = self.set.par_iter().filter_map(|(k, v)| {
             let result = v.execute(&e);
             if result {
                 Some(*k)
