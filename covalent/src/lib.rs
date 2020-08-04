@@ -1,5 +1,4 @@
 use std::time;
-use std::sync::{Arc, Barrier};
 use std::cell::RefCell;
 
 mod display_hints;
