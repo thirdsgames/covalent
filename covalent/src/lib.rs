@@ -1,3 +1,25 @@
+//! The `covalent` crate is a fast, safe, data-driven, modular game engine.
+//!
+//! # Goals
+//! Covalent aims to accomplish the following goals, in this order (top is most important)
+//! - Modularity. It should be relatively straightforward to rip out a part of covalent's
+//! architecture and replace it with your own code if you need it. You should be able to choose
+//! between many different options for your specific use case. For example, covalent
+//! uses an entity-component system (ECS).
+//! - Safety. In applications as complex as a game, obscure bugs can surface often. Covalent aims
+//! to make sure that your code is as safe as possible, leveraging Rust's type system and borrow
+//! checker to avoid race conditions and other similar problems.
+//! - Speed. Covalent uses the `rayon` crate along with a thread-safe entity-component system to
+//! automatically spread your work across all available CPU cores.
+//!
+//! # Non-Goals
+//! Covalent also specifically aims to *not* achieve certain outcomes.
+//! - Integrated game development platform. Due to covalent's modularity, it would be impossible to
+//! create a Unity/Unreal/Godot-style development app suited to every game. Instead, it would be a
+//! better idea to write tools that allow you to make your game inside the game itself.
+
+#![warn(missing_docs)]
+
 use std::time;
 use std::cell::RefCell;
 
@@ -63,7 +85,7 @@ impl InterpolatedStopwatch {
 /// A context that encapsulates the behaviour of an application run with covalent.
 /// This contains all the functions that the graphics backend will execute when the given event occurs.
 /// 
-/// The render thread runs concurrently with the update/behaviour threads. A single frame is calculated
+/// The render thread runs concurrently with the update threads. A single frame is calculated
 /// by the update threads while a single frame is rendered by the render thread. This allows code to ensure
 /// that certain outside things (e.g. the position of the mouse) will not change during calculation of a
 /// frame. The graphics backend is required to call certain functions at intervals in the event loop

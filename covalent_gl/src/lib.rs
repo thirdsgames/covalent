@@ -238,7 +238,7 @@ impl BackendGL {
         unsafe {
             I += 1;
         }
-        use covalent::scene::Node;
+
         let mut it = scene
             .iter_3d()
             .filter_map(|node| {

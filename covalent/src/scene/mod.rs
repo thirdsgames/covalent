@@ -1,7 +1,17 @@
-use std::sync::{RwLock, Arc};
+//! A scene is essentially everything that the user can see or hear, and anything that interacts with that.
+
+mod lock_set;
+
+mod event;
+pub use event::*;
+
+mod events;
+pub use events::*;
 
 mod node;
 pub use node::*;
+
+use std::sync::{RwLock, Arc};
 
 /// The scene contains everything that the user can see or hear, and anything that interacts with that.
 /// Covalent will automatically render everything in this scene according to the active render pipeline.
@@ -79,8 +89,8 @@ impl Scene {
         }
         s.new_node().write().unwrap().renderable = Some(Arc::new(gbackend.create_mesh(verts, inds)));
         let node = s.new_node();
-        TickDebugBehaviour::new(&mut s, Arc::clone(&node));
-        TickDebugBehaviour::new(&mut s, Arc::clone(&node));
+        TickDebugComponent::new(&mut s, Arc::clone(&node));
+        TickDebugComponent::new(&mut s, Arc::clone(&node));
         s
     }
 

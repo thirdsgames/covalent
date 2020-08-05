@@ -8,9 +8,7 @@ use crate::graphics::{RenderVertex, Renderable};
 /// between threads. Also, some graphics backends require that all graphics code be executed only on the main application
 /// thread.
 /// 
-/// If implementing a custom backend for Covalent, please make implementations for the following traits:
-/// - `graphics::Backend`
-/// - `graphics::RenderContext`
+/// If implementing a custom backend for covalent, you will need to make an implementation for this trait.
 pub trait Backend {
     /// This function will only be called once.
     /// Should create a render context, then enter a loop that will not be terminated until the application itself quits.
