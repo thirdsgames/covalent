@@ -1,30 +1,23 @@
 //! A scene is essentially everything that the user can see or hear, and anything that interacts with that.
 
-mod lock_set;
-
-mod event;
-pub use event::*;
-
-mod events;
-pub use events::*;
-
 mod node;
 pub use node::*;
 
 use std::sync::{RwLock, Arc};
+use crate::events::EventHandlers;
 
 /// The scene contains everything that the user can see or hear, and anything that interacts with that.
 /// Covalent will automatically render everything in this scene according to the active render pipeline.
 pub struct Scene {
     nodes: Vec<Arc<RwLock<Node>>>,
-    tick_handler: Arc<RwLock<EventHandler<TickEvent>>>
+    pub events: EventHandlers
 }
 
 impl Scene {
     pub fn new() -> Scene {
         Scene {
             nodes: Vec::new(),
-            tick_handler: Arc::new(RwLock::new(EventHandler::new()))
+            events: EventHandlers::default()
         }
     }
 
@@ -33,10 +26,6 @@ impl Scene {
         let n = Node::default();
         self.nodes.push(Arc::clone(&n));
         n
-    }
-
-    pub fn tick_handler(&self) -> &Arc<RwLock<EventHandler<TickEvent>>> {
-        &self.tick_handler
     }
 
     pub fn demo_squares_unoptimised() -> Scene {

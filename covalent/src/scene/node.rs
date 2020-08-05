@@ -73,9 +73,13 @@ impl TickDebugComponent {
             component: Arc::downgrade(&component),
         }));
 
-        TickDebugData::listen(&data, &scene.tick_handler, |_event, component| {
+        TickDebugData::listen(&data, &scene.events.tick, |_event, component| {
             component.tick_num += 1;
-            println!("Tick {}", component.tick_num);
+            //println!("Tick {}", component.tick_num);
+        });
+
+        TickDebugData::listen(&data, &scene.events.key, |event, component| {
+            println!("{:?}", event);
         });
 
         node.write().unwrap().components.push(component);

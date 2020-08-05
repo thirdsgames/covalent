@@ -56,15 +56,18 @@ pub struct EventHandler<E: Event> {
     set: HashMap<ListenerID, Listener<E>>
 }
 
-impl<E> EventHandler<E>
+impl<E> Default for EventHandler<E>
     where E: Event {
-    pub fn new() -> EventHandler<E> {
-        EventHandler {
+    fn default() -> Self {
+        Self {
             next_id: 0,
             set: HashMap::new()
         }
     }
+}
 
+impl<E> EventHandler<E>
+    where E: Event {
     pub fn new_id(&mut self) -> ListenerID {
         let id = self.next_id;
         self.next_id += 1;

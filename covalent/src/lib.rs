@@ -27,7 +27,9 @@ mod display_hints;
 pub use display_hints::DisplayHints;
 
 pub mod graphics;
+pub mod input;
 pub mod scene;
+pub mod events;
 
 pub use cgmath;
 pub use cgmath::{vec1, vec2, vec3, vec4};
@@ -127,7 +129,7 @@ impl Context {
         // Execute pre-frame actions.
 
         // Asynchronously process frame.
-        self.scene.tick_handler().write().unwrap().handle(scene::TickEvent {});
+        self.scene.events.tick.write().unwrap().handle(events::TickEvent {});
     }
     
     /// Should be called by the graphics backend as soon as rendering the frame is complete.
@@ -138,8 +140,14 @@ impl Context {
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.
     pub fn render_phases<'a>(&'a self) -> (&scene::Scene, std::collections::btree_map::Values<'a, i32, (String, graphics::PipelinePhase)>) {
         self.frame_stopwatch.borrow_mut().tick();
-        println!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
+        //println!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
         (&self.scene, self.graphics_pipeline.iter())
+    }
+
+    /// Should be called by the graphics backend whenever a key is pressed/released.
+    /// This will trigger an event handler in the current `Scene`.
+    pub fn process_keyboard_event(&self, e: input::KeyboardEvent) {
+        self.scene.events.key.write().unwrap().handle(e);
     }
 }
 

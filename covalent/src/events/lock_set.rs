@@ -13,6 +13,7 @@
 /// }
 ///
 /// use covalent::lock_data;
+/// use covalent::events::{Event, EventHandler};
 /// lock_data! {
 ///     HelloWorldData
 ///
@@ -53,8 +54,8 @@ macro_rules! lock_data {
 
         // Implement the listen function.
         impl $struct_name {
-            fn listen<'a, E, F>(data: &std::sync::Arc<std::sync::RwLock<Self>>, handler: &std::sync::Arc<std::sync::RwLock<$crate::scene::EventHandler<E>>>, func: F)
-                where E: $crate::scene::Event,
+            fn listen<'a, E, F>(data: &std::sync::Arc<std::sync::RwLock<Self>>, handler: &std::sync::Arc<std::sync::RwLock<$crate::events::EventHandler<E>>>, func: F)
+                where E: $crate::events::Event,
                       F: Fn(&E
                           $(
                           , lock_data!(@ generate parameter $mutability $data_type)
@@ -62,7 +63,7 @@ macro_rules! lock_data {
                       ),
                       F: Send + Sync + 'static {
                 let copy = std::sync::Arc::clone(data);
-                let l = $crate::scene::Listener {
+                let l = $crate::events::Listener {
                     id: handler.write().unwrap().new_id(),
                     func: Box::new(move |event| {
                         let self_var = copy.read().unwrap();
@@ -90,10 +91,10 @@ macro_rules! lock_data {
                     $f($e, $(lock_data!( @ generate mutability $mutability1 &$guard1)),*, lock_data!( @ generate mutability $mutability0 &guard));
                     Ok(())
                 },
-                _ => Err($crate::scene::ListenError::LockUnavailable)
+                _ => Err($crate::events::ListenError::LockUnavailable)
             }
         } else {
-            Err($crate::scene::ListenError::RequirementDeleted)
+            Err($crate::events::ListenError::RequirementDeleted)
         }
     };
 
@@ -108,10 +109,10 @@ macro_rules! lock_data {
                     $f($e, lock_data!( @ generate mutability $mutability0 &guard));
                     Ok(())
                 },
-                _ => Err($crate::scene::ListenError::LockUnavailable)
+                _ => Err($crate::events::ListenError::LockUnavailable)
             }
         } else {
-            Err($crate::scene::ListenError::RequirementDeleted)
+            Err($crate::events::ListenError::RequirementDeleted)
         }
     };
 
@@ -129,10 +130,10 @@ macro_rules! lock_data {
                 Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
                     lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $($mutability1),*, $mutability0 | $($guard1),*, guard }
                 },
-                _ => Err($crate::scene::ListenError::LockUnavailable)
+                _ => Err($crate::events::ListenError::LockUnavailable)
             }
         } else {
-            Err($crate::scene::ListenError::RequirementDeleted)
+            Err($crate::events::ListenError::RequirementDeleted)
         }
     };
 
@@ -147,10 +148,10 @@ macro_rules! lock_data {
                 Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
                     lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $mutability0 | guard }
                 },
-                _ => Err($crate::scene::ListenError::LockUnavailable)
+                _ => Err($crate::events::ListenError::LockUnavailable)
             }
         } else {
-            Err($crate::scene::ListenError::RequirementDeleted)
+            Err($crate::events::ListenError::RequirementDeleted)
         }
     };
 
