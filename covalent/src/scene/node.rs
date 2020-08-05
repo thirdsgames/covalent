@@ -48,9 +48,7 @@ impl Node {
 }
 
 /// Components listen for events to execute event-driven code.
-pub trait Component: Send + Sync {
-    fn node(&self) -> &Weak<RwLock<Node>>;
-}
+pub trait Component: Send + Sync {}
 
 pub struct TickDebugComponent {
     node: Weak<RwLock<Node>>,
@@ -65,7 +63,7 @@ lock_data! {
 }
 
 impl TickDebugComponent {
-    pub fn new(scene: &mut Scene, node: Arc<RwLock<Node>>) {
+    pub fn new(scene: &Scene, node: Arc<RwLock<Node>>) {
         let component = Arc::new(RwLock::new(TickDebugComponent {
             node: Arc::downgrade(&node),
             tick_num: 0
@@ -84,9 +82,4 @@ impl TickDebugComponent {
     }
 }
 
-impl Component for TickDebugComponent {
-    fn node(&self) -> &Weak<RwLock<Node>> {
-        &self.node
-    }
-}
-
+impl Component for TickDebugComponent {}

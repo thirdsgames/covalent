@@ -89,8 +89,8 @@ impl Scene {
         }
         s.new_node().write().unwrap().renderable = Some(Arc::new(gbackend.create_mesh(verts, inds)));
         let node = s.new_node();
-        TickDebugComponent::new(&mut s, Arc::clone(&node));
-        TickDebugComponent::new(&mut s, Arc::clone(&node));
+        TickDebugComponent::new(&s, Arc::clone(&node));
+        TickDebugComponent::new(&s, Arc::clone(&node));
         s
     }
 
