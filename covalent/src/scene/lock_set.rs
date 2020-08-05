@@ -88,12 +88,12 @@ macro_rules! lock_data {
             match lock_data!( @ generate try mutability $mutability0 arc ) {
                 Ok(lock_data!( @ generate mutability $mutability0 guard )) => {
                     $f($e, $(lock_data!( @ generate mutability $mutability1 &$guard1)),*, lock_data!( @ generate mutability $mutability0 &guard));
-                    true
+                    Ok(())
                 },
-                _ => false
+                _ => Err($crate::scene::ListenError::LockUnavailable)
             }
         } else {
-            false
+            Err($crate::scene::ListenError::RequirementDeleted)
         }
     };
 
@@ -106,12 +106,12 @@ macro_rules! lock_data {
             match lock_data!( @ generate try mutability $mutability0 arc ) {
                 Ok(lock_data!( @ generate mutability $mutability0 guard )) => {
                     $f($e, lock_data!( @ generate mutability $mutability0 &guard));
-                    true
+                    Ok(())
                 },
-                _ => false
+                _ => Err($crate::scene::ListenError::LockUnavailable)
             }
         } else {
-            false
+            Err($crate::scene::ListenError::RequirementDeleted)
         }
     };
 
@@ -129,10 +129,10 @@ macro_rules! lock_data {
                 Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
                     lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $($mutability1),*, $mutability0 | $($guard1),*, guard }
                 },
-                _ => false
+                _ => Err($crate::scene::ListenError::LockUnavailable)
             }
         } else {
-            false
+            Err($crate::scene::ListenError::RequirementDeleted)
         }
     };
 
@@ -147,10 +147,10 @@ macro_rules! lock_data {
                 Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
                     lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $mutability0 | guard }
                 },
-                _ => false
+                _ => Err($crate::scene::ListenError::LockUnavailable)
             }
         } else {
-            false
+            Err($crate::scene::ListenError::RequirementDeleted)
         }
     };
 

@@ -118,9 +118,9 @@ impl graphics::Backend for BackendGL {
         )
         .unwrap();
         let mut batch = BatchGL {
-            vbo: vbo,
-            ibo: ibo,
-            program: program,
+            vbo,
+            ibo,
+            program,
         };
 
         self.event_loop
