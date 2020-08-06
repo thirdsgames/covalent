@@ -8,6 +8,8 @@ use crate::graphics::Renderable;
 pub struct Node {
     /// Refers to this node.
     self_ref: Weak<RwLock<Self>>,
+    /// A reference to the scene that contains this node.
+    scene: Weak<RwLock<Scene>>,
     /// The position of the node.
     pos: Vector3<f32>,
     /// The rotation of the node.
@@ -30,9 +32,10 @@ impl Node {
     /// 
     /// Creates a new node with default settings and no instances or renderable.
     /// Does not implement `Default`: we want to encapsulate every node in an `Arc<RwLock<>>`.
-    pub(crate) fn default() -> Arc<RwLock<Self>> {
+    pub(crate) fn default(scene: Arc<RwLock<Scene>>) -> Arc<RwLock<Self>> {
         let node = Arc::new(RwLock::new(Node {
             self_ref: Weak::new(),
+            scene: Arc::downgrade(&scene),
             pos: vec3(0.0, 0.0, 0.0),
             rot: Quaternion::new(1.0, 0.0, 0.0, 0.0),
             scl: vec3(1.0, 1.0, 1.0),
@@ -44,6 +47,10 @@ impl Node {
         }));
         node.write().unwrap().self_ref = Arc::downgrade(&node);
         return node;
+    }
+
+    pub fn scene(&self) -> &Weak<RwLock<Scene>> {
+        &self.scene
     }
 }
 
@@ -63,7 +70,7 @@ lock_data! {
 }
 
 impl TickDebugComponent {
-    pub fn new(scene: &Scene, node: Arc<RwLock<Node>>) {
+    pub fn new(node: Arc<RwLock<Node>>) {
         let component = Arc::new(RwLock::new(TickDebugComponent {
             node: Arc::downgrade(&node),
             tick_num: 0
@@ -73,14 +80,16 @@ impl TickDebugComponent {
             component: Arc::downgrade(&component),
         }));
 
-        TickDebugData::listen(&data, &scene.events.tick, |_event, component| {
-            component.tick_num += 1;
-            //println!("Tick {}", component.tick_num);
-        });
+        if let Some(scene) = node.read().unwrap().scene.upgrade() {
+            TickDebugData::listen(&data, &scene.read().unwrap().events.tick, |_event, component| {
+                component.tick_num += 1;
+                //println!("Tick {}", component.tick_num);
+            });
 
-        TickDebugData::listen(&data, &scene.events.key, |event, component| {
-            println!("{:?}", event);
-        });
+            TickDebugData::listen(&data, &scene.read().unwrap().events.key, |event, component| {
+                println!("{:?}", event);
+            });
+        }
 
         node.write().unwrap().components.push(component);
     }

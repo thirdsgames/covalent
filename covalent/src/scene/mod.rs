@@ -3,32 +3,39 @@
 mod node;
 pub use node::*;
 
-use std::sync::{RwLock, Arc};
+use std::sync::{RwLock, Arc, Weak};
 use crate::events::EventHandlers;
 
 /// The scene contains everything that the user can see or hear, and anything that interacts with that.
 /// Covalent will automatically render everything in this scene according to the active render pipeline.
+///
+/// The scene should mostly be borrowed immutably to allow for more concurrency, many of its fields
+/// are internally mutable.
 pub struct Scene {
+    self_ref: Weak<RwLock<Scene>>,
     nodes: Vec<Arc<RwLock<Node>>>,
     pub events: EventHandlers
 }
 
 impl Scene {
-    pub fn new() -> Scene {
-        Scene {
+    pub fn new() -> Arc<RwLock<Scene>> {
+        let scene = Arc::new(RwLock::new(Scene {
+            self_ref: Weak::new(),
             nodes: Vec::new(),
             events: EventHandlers::default()
-        }
+        }));
+        scene.write().unwrap().self_ref = Arc::downgrade(&scene);
+        scene
     }
 
     /// Creates a new node and adds it to the scene.
     pub fn new_node(&mut self) -> Arc<RwLock<Node>> {
-        let n = Node::default();
+        let n = Node::default(Weak::upgrade(&self.self_ref).unwrap());
         self.nodes.push(Arc::clone(&n));
         n
     }
 
-    pub fn demo_squares_unoptimised() -> Scene {
+    pub fn demo_squares_unoptimised() -> Arc<RwLock<Scene>> {
         use crate::graphics::{Renderable, RenderVertex, Colour};
         use cgmath::vec3;
 
@@ -36,12 +43,12 @@ impl Scene {
         for i in (-10..10).map(|x| x as f32) {
             for j in (-10..10).map(|x| x as f32) {
                 for k in (-10..10).map(|x| x as f32) {
-                    s.new_node().write().unwrap().renderable = Some(Arc::new(Renderable::Triangle(
+                    s.write().unwrap().new_node().write().unwrap().renderable = Some(Arc::new(Renderable::Triangle(
                         RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
                         RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
                         RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
                     )));
-                    s.new_node().write().unwrap().renderable = Some(Arc::new(Renderable::Triangle(
+                    s.write().unwrap().new_node().write().unwrap().renderable = Some(Arc::new(Renderable::Triangle(
                         RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.01, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
                         RenderVertex{ pos: vec3(0.1*i+0.01, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) },
                         RenderVertex{ pos: vec3(0.1*i+0.09, 0.1*j+0.09, 0.02*k+0.0), col: Colour::new(0.1*i, 0.1*j, 0.1*k) }
@@ -52,7 +59,7 @@ impl Scene {
         s
     }
 
-    pub fn demo_squares(gbackend: &impl crate::graphics::Backend) -> Scene {
+    pub fn demo_squares(gbackend: &impl crate::graphics::Backend) -> Arc<RwLock<Scene>> {
         use crate::graphics::{RenderVertex, Colour};
         use cgmath::vec3;
 
@@ -76,10 +83,10 @@ impl Scene {
                 }
             }
         }
-        s.new_node().write().unwrap().renderable = Some(Arc::new(gbackend.create_mesh(verts, inds)));
-        let node = s.new_node();
-        TickDebugComponent::new(&s, Arc::clone(&node));
-        TickDebugComponent::new(&s, Arc::clone(&node));
+        s.write().unwrap().new_node().write().unwrap().renderable = Some(Arc::new(gbackend.create_mesh(verts, inds)));
+        let node = s.write().unwrap().new_node();
+        TickDebugComponent::new(Arc::clone(&node));
+        TickDebugComponent::new(Arc::clone(&node));
         s
     }
 

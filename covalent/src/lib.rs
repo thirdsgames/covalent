@@ -33,6 +33,9 @@ pub mod events;
 
 pub use cgmath;
 pub use cgmath::{vec1, vec2, vec3, vec4};
+
+use std::sync::{Arc, RwLock};
+
 /// Convenience constructor for a one-dimensional point.
 pub fn pt1<S>(x: S) -> cgmath::Point1<S> {
     cgmath::Point1::new(x)
@@ -111,11 +114,11 @@ impl InterpolatedStopwatch {
 pub struct Context {
     frame_stopwatch: RefCell<InterpolatedStopwatch>,
     graphics_pipeline: graphics::Pipeline,
-    scene: scene::Scene
+    scene: Arc<RwLock<scene::Scene>>
 }
 
 impl Context {
-    fn new(pipeline: graphics::Pipeline, scene: scene::Scene) -> Context {
+    fn new(pipeline: graphics::Pipeline, scene: Arc<RwLock<scene::Scene>>) -> Context {
         Context {
             frame_stopwatch: RefCell::from(InterpolatedStopwatch::new(512)),
             graphics_pipeline: pipeline,
@@ -129,7 +132,7 @@ impl Context {
         // Execute pre-frame actions.
 
         // Asynchronously process frame.
-        self.scene.events.tick.write().unwrap().handle(events::TickEvent {});
+        self.scene.read().unwrap().events.tick.write().unwrap().handle(events::TickEvent {});
     }
     
     /// Should be called by the graphics backend as soon as rendering the frame is complete.
@@ -138,16 +141,16 @@ impl Context {
     }
 
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.
-    pub fn render_phases<'a>(&'a self) -> (&scene::Scene, std::collections::btree_map::Values<'a, i32, (String, graphics::PipelinePhase)>) {
+    pub fn render_phases(&self) -> (Arc<RwLock<scene::Scene>>, std::collections::btree_map::Values<i32, (String, graphics::PipelinePhase)>) {
         self.frame_stopwatch.borrow_mut().tick();
         //println!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
-        (&self.scene, self.graphics_pipeline.iter())
+        (Arc::clone(&self.scene), self.graphics_pipeline.iter())
     }
 
     /// Should be called by the graphics backend whenever a key is pressed/released.
     /// This will trigger an event handler in the current `Scene`.
     pub fn process_keyboard_event(&self, e: input::KeyboardEvent) {
-        self.scene.events.key.write().unwrap().handle(e);
+        self.scene.read().unwrap().events.key.write().unwrap().handle(e);
     }
 }
 

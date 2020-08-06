@@ -334,7 +334,7 @@ impl graphics::Backend for BackendGL {
                         let (scene, phases) = ctx.render_phases();
 
                         for (name, phase) in phases {
-                            self.execute_phase(name, scene, phase, &mut batch, &mut frame);
+                            self.execute_phase(name, &scene.read().unwrap(), phase, &mut batch, &mut frame);
                         }
                         if let Err(e) = frame.finish() {
                             eprintln!("Error caught when swapping buffers: {:?}", e);
