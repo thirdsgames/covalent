@@ -2,6 +2,7 @@ use crate::scene::*;
 use std::sync::{RwLock, Arc, Weak};
 use cgmath::{vec3, Vector3, Quaternion, Matrix4, Transform};
 use crate::graphics::Renderable;
+use crate::input::ElementState;
 
 /// The node is the root of anything that is in the scene.
 /// Nodes have a list of `Behaviour`s, which represent the functionality of the node.
@@ -57,15 +58,16 @@ impl Node {
 /// Components listen for events to execute event-driven code.
 pub trait Component: Send + Sync {}
 
+// TICK DEBUG COMPONENT
+
 pub struct TickDebugComponent {
     node: Weak<RwLock<Node>>,
     tick_num: i32
 }
+impl Component for TickDebugComponent {}
 
-use crate::lock_data;
-lock_data! {
+crate::lock_data! {
     TickDebugData
-
     component: write TickDebugComponent
 }
 
@@ -85,14 +87,126 @@ impl TickDebugComponent {
                 component.tick_num += 1;
                 //println!("Tick {}", component.tick_num);
             });
-
-            TickDebugData::listen(&data, &scene.read().unwrap().events.key, |event, component| {
-                log::debug!("TickDebugComponent received key event: {:?}", event);
-            });
         }
 
         node.write().unwrap().components.push(component);
     }
 }
 
-impl Component for TickDebugComponent {}
+// CAMERA MOTION COMPONENT
+
+pub struct CameraMotionComponent {
+    cam: crate::graphics::PerspectiveCamera,
+    camera_matrices: Arc<RwLock<crate::graphics::CameraMatrices>>,
+
+    key_forward: bool,
+    key_backward: bool,
+    key_left: bool,
+    key_right: bool,
+    key_up: bool,
+    key_down: bool,
+}
+impl Component for CameraMotionComponent {}
+
+crate::lock_data! {
+    CameraMotionData
+    component: write CameraMotionComponent
+}
+
+impl CameraMotionComponent {
+    pub fn new(node: Arc<RwLock<Node>>, mut cam: crate::graphics::PerspectiveCamera, camera_matrices: Arc<RwLock<crate::graphics::CameraMatrices>>) {
+        use crate::graphics::Camera;
+
+        cam.set_pos(crate::pt3(3.0, 3.0, 3.0));
+
+        let component = Arc::new(RwLock::new(CameraMotionComponent {
+            cam,
+            camera_matrices,
+
+            key_forward: false,
+            key_backward: false,
+            key_left: false,
+            key_right: false,
+            key_up: false,
+            key_down: false,
+        }));
+
+        let data = Arc::new(RwLock::new(CameraMotionData {
+            component: Arc::downgrade(&component),
+        }));
+
+        if let Some(scene) = node.read().unwrap().scene.upgrade() {
+            CameraMotionData::listen(&data, &scene.read().unwrap().events.tick, |_event, component| {
+                // Update motion according to the keys pressed.
+                let mut offset_pos = crate::vec3(0.0, 0.0, 0.0);
+
+                if component.key_forward {
+                    offset_pos += component.cam.get_dir();
+                }
+                if component.key_backward {
+                    offset_pos -= component.cam.get_dir();
+                }
+                if component.key_right {
+                    offset_pos += component.cam.get_right();
+                }
+                if component.key_left {
+                    offset_pos -= component.cam.get_right();
+                }
+                if component.key_up {
+                    offset_pos += component.cam.get_up();
+                }
+                if component.key_down {
+                    offset_pos -= component.cam.get_up();
+                }
+
+                component.cam.set_pos(component.cam.get_pos() + offset_pos * 0.001);
+
+                component.cam.update_matrices(Arc::clone(&component.camera_matrices));
+            });
+
+            CameraMotionData::listen(&data, &scene.read().unwrap().events.key, |event, component| {
+                match event.virtual_keycode {
+                    Some(crate::input::VirtualKeyCode::W) => {
+                        component.key_forward = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    Some(crate::input::VirtualKeyCode::A) => {
+                        component.key_left = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    Some(crate::input::VirtualKeyCode::S) => {
+                        component.key_backward = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    Some(crate::input::VirtualKeyCode::D) => {
+                        component.key_right = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    Some(crate::input::VirtualKeyCode::E) => {
+                        component.key_up = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    Some(crate::input::VirtualKeyCode::Q) => {
+                        component.key_down = match event.state {
+                            ElementState::Pressed => { true },
+                            ElementState::Released => { false },
+                        }
+                    }
+                    _ => {}
+                }
+            });
+        }
+
+        node.write().unwrap().components.push(component);
+    }
+}

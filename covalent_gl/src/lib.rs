@@ -435,7 +435,7 @@ impl BackendGL {
             .peekable();
 
         use covalent::cgmath::Matrix;
-        settings
+        /*settings
             .cam
             .write()
             .unwrap()
@@ -445,12 +445,12 @@ impl BackendGL {
                 1.1,
                 1.1,
                 0.3 + 0.3 * ((unsafe { I } as f32) * 0.01).sin(),
-            ));
+            ));*/
         let c = settings
-            .cam
+            .camera_matrices
             .read()
             .unwrap()
-            .get_combined_matrix()
+            .combined
             .transpose();
         let combined = [
             [c.x.x, c.y.x, c.z.x, c.w.x],
@@ -466,7 +466,9 @@ impl BackendGL {
         params.depth.test = glium::DepthTest::IfLess;
         params.depth.write = true;
 
+        let mut draw_calls = 0u32;
         while let Some(_) = it.peek() {
+            draw_calls += 1;
             let mut vbo = batch.vbo.map_write();
             let mut ibo = batch.ibo.map_write();
             let idx = self.render_lots(
@@ -493,6 +495,7 @@ impl BackendGL {
                     .unwrap();
             }
         }
+        //log::trace!("Executed {} draw calls this frame", draw_calls);
     }
 
     /// Render as many things from the given iterator as we can in the current batch, returning the (exclusive) max index we wrote to.

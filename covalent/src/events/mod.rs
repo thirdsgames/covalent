@@ -10,7 +10,7 @@ pub use common::*;
 mod event;
 pub use event::*;
 
-mod lock_set;
+mod lock_data;
 
 use crate::input::KeyboardEvent;
 

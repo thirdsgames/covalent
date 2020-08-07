@@ -143,7 +143,7 @@ impl Context {
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.
     pub fn render_phases(&self) -> (Arc<RwLock<scene::Scene>>, std::collections::btree_map::Values<i32, (String, graphics::PipelinePhase)>) {
         self.frame_stopwatch.borrow_mut().tick();
-        //println!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
+        //log::trace!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
         (Arc::clone(&self.scene), self.graphics_pipeline.iter())
     }
 
@@ -159,8 +159,7 @@ impl Context {
 /// and only create this context on the main thread!
 /// 
 /// You should never need to interact with the context manually - it is all handled by the active graphics backend.
-pub fn execute(pipeline: graphics::Pipeline, gback: impl graphics::Backend) {
-    let scene = scene::Scene::demo_squares(&gback);
+pub fn execute(scene: Arc<RwLock<scene::Scene>>, pipeline: graphics::Pipeline, gback: impl graphics::Backend) {
     gback.main_loop(Context::new(pipeline, scene));
 }
 

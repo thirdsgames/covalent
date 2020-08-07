@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
-use crate::graphics::{Camera3D, RenderTarget};
+use crate::graphics::{RenderTarget, CameraMatrices};
 
 /// The `Pipeline` is the way to tell covalent how to render your scene.
 /// It contains a series of steps (`PipelinePhase`) which the graphics backend will execute sequentially.
@@ -47,7 +47,7 @@ impl Pipeline {
                             contains_render_to_window = true;
                         }
                         _ => {
-                            unimplemented!("Render target {:?} unimplemented", target);
+                            log::error!("Render target {:?} unimplemented", target);
                         }
                     }
                 },
@@ -85,15 +85,17 @@ pub enum PipelinePhase {
 
 /// The specification for how to render a scene.
 pub struct RenderSettings {
-    /// Which camera should be used to render the scene? This controls the position and angle of the viewpoint of the render.
-    pub cam: Arc<RwLock<dyn Camera3D>>
+    /// What transformation should be used to render the scene?
+    /// This is modified by `Camera` objects.
+    /// This controls the position and angle of the viewpoint of the render.
+    pub camera_matrices: Arc<RwLock<CameraMatrices>>
 }
 
-impl RenderSettings {
+impl Default for RenderSettings {
     /// Initialises render settings to the default values.
-    pub fn new(cam: Arc<RwLock<dyn Camera3D>>) -> RenderSettings {
-        RenderSettings {
-            cam
+    fn default() -> Self {
+        Self {
+            camera_matrices: Arc::new(RwLock::new(CameraMatrices::default()))
         }
     }
 }

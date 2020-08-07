@@ -58,7 +58,7 @@ macro_rules! lock_data {
                 where E: $crate::events::Event,
                       F: Fn(&E
                           $(
-                          , lock_data!(@ generate parameter $mutability $data_type)
+                          , $crate::lock_data!(@ generate parameter $mutability $data_type)
                           )*
                       ),
                       F: Send + Sync + 'static {
@@ -67,7 +67,7 @@ macro_rules! lock_data {
                     id: handler.write().unwrap().new_id(),
                     func: Box::new(move |event| {
                         let self_var = copy.read().unwrap();
-                        lock_data!{ @ generate locks self_var, func, event, $($name, $mutability, $data_type),+ }
+                        $crate::lock_data!{ @ generate locks self_var, func, event, $($name, $mutability, $data_type),+ }
                     })
                 };
                 handler.write().unwrap().insert(l);
@@ -86,9 +86,9 @@ macro_rules! lock_data {
         ) => {
 
         if let Some(arc) = std::sync::Weak::upgrade(&$s.$name0) {
-            match lock_data!( @ generate try mutability $mutability0 arc ) {
-                Ok(lock_data!( @ generate mutability $mutability0 guard )) => {
-                    $f($e, $(lock_data!( @ generate mutability $mutability1 &$guard1)),*, lock_data!( @ generate mutability $mutability0 &guard));
+            match $crate::lock_data!( @ generate try mutability $mutability0 arc ) {
+                Ok($crate::lock_data!( @ generate mutability $mutability0 guard )) => {
+                    $f($e, $($crate::lock_data!( @ generate mutability $mutability1 &$guard1)),*, $crate::lock_data!( @ generate mutability $mutability0 &guard));
                     Ok(())
                 },
                 _ => Err($crate::events::ListenError::LockUnavailable)
@@ -104,9 +104,9 @@ macro_rules! lock_data {
         ) => {
 
         if let Some(arc) = std::sync::Weak::upgrade(&$s.$name0) {
-            match lock_data!( @ generate try mutability $mutability0 arc ) {
-                Ok(lock_data!( @ generate mutability $mutability0 guard )) => {
-                    $f($e, lock_data!( @ generate mutability $mutability0 &guard));
+            match $crate::lock_data!( @ generate try mutability $mutability0 arc ) {
+                Ok($crate::lock_data!( @ generate mutability $mutability0 guard )) => {
+                    $f($e, $crate::lock_data!( @ generate mutability $mutability0 &guard));
                     Ok(())
                 },
                 _ => Err($crate::events::ListenError::LockUnavailable)
@@ -126,9 +126,9 @@ macro_rules! lock_data {
         ) => {
 
         if let Some(arc) = std::sync::Weak::upgrade(&$s.$name0) {
-            match lock_data!( @ generate try mutability $mutability0 arc ) {
-                Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
-                    lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $($mutability1),*, $mutability0 | $($guard1),*, guard }
+            match $crate::lock_data!( @ generate try mutability $mutability0 arc ) {
+                Ok($crate::lock_data!( @ generate mutability $mutability0 guard)) => {
+                    $crate::lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $($mutability1),*, $mutability0 | $($guard1),*, guard }
                 },
                 _ => Err($crate::events::ListenError::LockUnavailable)
             }
@@ -144,9 +144,9 @@ macro_rules! lock_data {
         ) => {
 
         if let Some(arc) = std::sync::Weak::upgrade(&$s.$name0) {
-            match lock_data!( @ generate try mutability $mutability0 arc ) {
-                Ok(lock_data!( @ generate mutability $mutability0 guard)) => {
-                    lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $mutability0 | guard }
+            match $crate::lock_data!( @ generate try mutability $mutability0 arc ) {
+                Ok($crate::lock_data!( @ generate mutability $mutability0 guard)) => {
+                    $crate::lock_data!{ @ generate locks $s, $f, $e, $($tail)* | $mutability0 | guard }
                 },
                 _ => Err($crate::events::ListenError::LockUnavailable)
             }
