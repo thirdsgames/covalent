@@ -5,6 +5,7 @@
 /// 
 /// Render targets have multiple `RenderChannel`s. These are the specific output layers that covalent will render to.
 /// See the `RenderChannel` documentation for more information.
+#[derive(Debug)]
 pub enum RenderTarget {
     /// The default render target is the user's screen. This is the window that covalent opens.
     Window,

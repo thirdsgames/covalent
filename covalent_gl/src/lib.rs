@@ -337,7 +337,7 @@ impl graphics::Backend for BackendGL {
                             self.execute_phase(name, &scene.read().unwrap(), phase, &mut batch, &mut frame);
                         }
                         if let Err(e) = frame.finish() {
-                            eprintln!("Error caught when swapping buffers: {:?}", e);
+                            log::error!("Error caught when swapping buffers: {:?}", e);
                         }
 
                         ctx.end_frame();
@@ -348,7 +348,7 @@ impl graphics::Backend for BackendGL {
     }
 
     fn create_mesh(&self, verts: Vec<RenderVertex>, inds: Vec<u32>) -> Renderable {
-        println!(
+        log::trace!(
             "Creating mesh with {} verts, {} inds",
             verts.len(),
             inds.len()

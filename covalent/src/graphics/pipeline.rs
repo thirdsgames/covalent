@@ -41,9 +41,14 @@ impl Pipeline {
         for (_, phase) in self.phases.values() {
             match phase {
                 PipelinePhase::Render { target, .. } => {
-                    #[allow(irrefutable_let_patterns)]  // When we use framebuffers / other render targets, this will be needed, and probably turned into a match stmt.
-                    if let RenderTarget::Window = target {
-                        contains_render_to_window = true;
+                    match target {
+                        // When we use framebuffers / other render targets, this will be expanded upon.
+                        RenderTarget::Window => {
+                            contains_render_to_window = true;
+                        }
+                        _ => {
+                            unimplemented!("Render target {:?} unimplemented", target);
+                        }
                     }
                 },
                 _ => {}
@@ -57,7 +62,7 @@ impl Pipeline {
 }
 
 impl Pipeline {
-    pub fn iter<'a>(&'a self) -> std::collections::btree_map::Values<'a, i32, (String, PipelinePhase)> {
+    pub fn iter(&self) -> std::collections::btree_map::Values<i32, (String, PipelinePhase)> {
         self.check_phases();
         self.phases.values()
     }

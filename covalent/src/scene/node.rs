@@ -87,7 +87,7 @@ impl TickDebugComponent {
             });
 
             TickDebugData::listen(&data, &scene.read().unwrap().events.key, |event, component| {
-                println!("{:?}", event);
+                log::debug!("TickDebugComponent received key event: {:?}", event);
             });
         }
 
