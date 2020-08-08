@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use cgmath::{Vector3, Point3, Matrix4, Transform, InnerSpace, SquareMatrix};
+use cgmath::{Vector3, Point3, Matrix4, Transform, InnerSpace, SquareMatrix, Vector2};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// A camera is the lens through which your scene can be viewed. This tells covalent how to map the
@@ -44,9 +44,13 @@ pub struct PerspectiveCamera {
     pos: Point3<f32>,
     dir: Vector3<f32>,
     up: Vector3<f32>,
+
+    screen_resolution: Vector2<f32>,
+
     proj: RwLock<Matrix4<f32>>,
     view: RwLock<Matrix4<f32>>,
     combined: RwLock<Matrix4<f32>>,
+
     /// If the camera is "dirty", it needs to recalculate its matrices before next time they are used.
     dirty: AtomicBool
 }
@@ -58,9 +62,14 @@ impl PerspectiveCamera {
             pos,
             dir,
             up,
+
+            // Supply a dummy screen resolution to provide a 1:1 aspect ratio.
+            screen_resolution: cgmath::vec2(800.0, 800.0),
+
             proj: RwLock::new(Matrix4::one()),
             view: RwLock::new(Matrix4::one()),
             combined: RwLock::new(Matrix4::one()),
+
             dirty: AtomicBool::new(true)
         }
     }
@@ -68,7 +77,7 @@ impl PerspectiveCamera {
     /// Updates the matrices contained within the camera. Call if you need to retrieve a value from
     /// this camera, but the state is dirty.
     fn update_matrices(&self) {
-        *self.proj.write().unwrap() = cgmath::perspective(cgmath::Deg(60.0), 1.0, 0.01, 100.0);
+        *self.proj.write().unwrap() = cgmath::perspective(cgmath::Deg(60.0), self.get_aspect_ratio(), 0.01, 100.0);
         *self.view.write().unwrap() = cgmath::Matrix4::look_at_dir(self.pos, self.dir, self.up);
         *self.combined.write().unwrap() = *self.proj.read().unwrap() * *self.view.read().unwrap();
         self.dirty.store(false, Ordering::SeqCst);
@@ -114,6 +123,24 @@ impl PerspectiveCamera {
     /// Retrieves the (normalised) direction pointing to the right from the camera.
     pub fn get_right(&self) -> Vector3<f32> {
         self.dir.cross(self.up)
+    }
+
+    /// Sets the resolution of the screen. The camera will deduce the aspect ratio for the given
+    /// screen resolution.
+    pub fn set_screen_resolution(&mut self, screen_resolution: Vector2<f32>) {
+        self.screen_resolution = screen_resolution;
+        self.dirty.store(true, Ordering::SeqCst);
+    }
+
+    /// Retrieves the screen resolution supplied to this camera.
+    pub fn get_screen_resolution(&self) -> Vector2<f32> {
+        self.screen_resolution
+    }
+
+    /// Returns the aspect ratio supplied to this camera. This is calculated from the screen
+    /// resolution: `width / height`.
+    pub fn get_aspect_ratio(&self) -> f32 {
+        self.screen_resolution.x / self.screen_resolution.y
     }
 }
 

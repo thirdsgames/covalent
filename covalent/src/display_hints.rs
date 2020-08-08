@@ -3,9 +3,9 @@ pub struct DisplayHints {
     /// The title to show on the display window, if in windowed mode on a backend that supports this.
     pub title: String,
     /// The default width of the window, when this can be defined.
-    pub width: i32,
+    pub width: u32,
     /// The default height of the window, when this can be defined.
-    pub height: i32,
+    pub height: u32,
 }
 
 impl DisplayHints {

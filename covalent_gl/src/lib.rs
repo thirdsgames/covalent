@@ -21,6 +21,9 @@ struct MeshGL {
 
 /// BackendGL is a rendering backend for Covalent, using OpenGL.
 pub struct BackendGL {
+    /// Hints that tell `winit` how to create the window.
+    display_hints: DisplayHints,
+
     /// The backend owns the glium display.
     display: glium::Display,
 
@@ -34,13 +37,13 @@ pub struct BackendGL {
 }
 
 impl BackendGL {
-    pub fn new(dh: DisplayHints) -> BackendGL {
+    pub fn new(display_hints: DisplayHints) -> BackendGL {
         // 1. The **winit::EventsLoop** for handling events.
         let event_loop = glium::glutin::event_loop::EventLoop::new();
         // 2. Parameters for building the Window.
         let wb = glium::glutin::window::WindowBuilder::new()
-            .with_inner_size(glium::glutin::dpi::LogicalSize::new(dh.width, dh.height))
-            .with_title(dh.title.clone());
+            .with_inner_size(glium::glutin::dpi::LogicalSize::new(display_hints.width, display_hints.height))
+            .with_title(display_hints.title.clone());
         // 3. Parameters for building the OpenGL context.
         let cb = glium::glutin::ContextBuilder::new();
         // 4. Build the Display with the given window and OpenGL context parameters and register the
@@ -48,6 +51,7 @@ impl BackendGL {
         let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
         BackendGL {
+            display_hints,
             display,
             event_loop: Some(event_loop),
             meshes: RefCell::from(HashMap::new()),
@@ -291,6 +295,11 @@ impl graphics::Backend for BackendGL {
             program,
         };
 
+        // Tell covalent the *initial* screen size by emitting a window resize event.
+        ctx.process_window_resize_event(covalent::events::WindowResizeEvent {
+            new_size: covalent::vec2(self.display_hints.width, self.display_hints.height)
+        });
+
         self.event_loop
             .take()
             .unwrap()
@@ -306,7 +315,7 @@ impl graphics::Backend for BackendGL {
                         glutin::event::WindowEvent::KeyboardInput { input, .. } => {
                             // echo this event through to covalent, so that event listeners can
                             // listen for it
-                            let event = covalent::input::KeyboardEvent {
+                            let event = covalent::events::KeyboardEvent {
                                 scan_code: input.scancode,
                                 state: match input.state {
                                     ElementState::Pressed => { covalent::input::ElementState::Pressed },
@@ -319,12 +328,17 @@ impl graphics::Backend for BackendGL {
                             };
                             ctx.process_keyboard_event(event);
                         },
+                        glutin::event::WindowEvent::Resized(new_size) => {
+                            ctx.process_window_resize_event(covalent::events::WindowResizeEvent {
+                                new_size: covalent::vec2(new_size.width, new_size.height)
+                            });
+                        },
                         _ => (),
                     },
 
                     glutin::event::Event::DeviceEvent { event, .. } => match event {
                         DeviceEvent::MouseMotion { delta } => {
-                            ctx.process_mouse_delta_event(covalent::input::MouseDeltaEvent {
+                            ctx.process_mouse_delta_event(covalent::events::MouseDeltaEvent {
                                 delta: covalent::vec2(delta.0, delta.1)
                             });
                         },

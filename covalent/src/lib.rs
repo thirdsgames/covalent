@@ -161,14 +161,20 @@ impl Context {
 
     /// Should be called by the graphics backend whenever a key is pressed/released.
     /// This will trigger an event handler in the current `Scene`.
-    pub fn process_keyboard_event(&self, e: input::KeyboardEvent) {
+    pub fn process_keyboard_event(&self, e: events::KeyboardEvent) {
         self.scene.read().unwrap().events.key.write().unwrap().handle(e);
     }
 
     /// Should be called by the graphics backend whenever the mouse is moved.
     /// This will trigger an event handler in the current `Scene`.
-    pub fn process_mouse_delta_event(&self, e: input::MouseDeltaEvent) {
+    pub fn process_mouse_delta_event(&self, e: events::MouseDeltaEvent) {
         self.scene.read().unwrap().events.mouse_delta.write().unwrap().handle(e);
+    }
+
+    /// Should be called by the graphics backend whenever the window is resized.
+    /// This will trigger an event handler in the current `Scene`.
+    pub fn process_window_resize_event(&self, e: events::WindowResizeEvent) {
+        self.scene.read().unwrap().events.window_resize.write().unwrap().handle(e);
     }
 }
 

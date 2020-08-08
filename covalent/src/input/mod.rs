@@ -5,8 +5,6 @@
 //! This allows for more flexibility with designing a graphics backend, and also leaves room
 //! to just not make a graphics backend at all (e.g. for server-side code).
 
-use crate::events::Event;
-
 /// Hardware-dependent keyboard scan code.
 /// Copied from the `winit` crate, version 0.22.2.
 pub type ScanCode = u32;
@@ -220,33 +218,3 @@ pub enum VirtualKeyCode {
     Paste,
     Cut,
 }
-
-/// An event from the keyboard has been received.
-/// Adapted from the `winit` crate, version 0.22.2.
-#[derive(Debug)]
-pub struct KeyboardEvent {
-    /// Identifies the physical key pressed.
-    ///
-    /// This should not change if the user adjusts the host's keyboard map. Use when the physical location of the
-    /// key is more important than the key's host GUI semantics, such as for movement controls in a first-person
-    /// game.
-    pub scan_code: ScanCode,
-
-    /// Describes the input state of a key, i.e. pressed or released.
-    pub state: ElementState,
-
-    /// Identifies the semantic meaning of the key.
-    ///
-    /// Use when the semantics of the key are more important than the physical location of the key, such as when
-    /// implementing appropriate behavior for "page up."
-    pub virtual_keycode: Option<VirtualKeyCode>,
-}
-impl Event for KeyboardEvent {}
-
-/// The mouse has been moved by a certain amount of pixels in the X and Y directions.
-#[derive(Debug)]
-pub struct MouseDeltaEvent {
-    /// The difference in pixels between the location of the mouse last frame and this frame.
-    pub delta: cgmath::Vector2<f64>
-}
-impl Event for MouseDeltaEvent {}

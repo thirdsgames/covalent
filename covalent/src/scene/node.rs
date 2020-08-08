@@ -218,6 +218,11 @@ impl CameraMotionComponent {
                 component.pitch += event.delta.y as f32 * 0.001f32;
                 component.yaw += event.delta.x as f32 * 0.001f32;
             });
+
+            CameraMotionData::listen(&data, &scene.read().unwrap().events.window_resize, |event, component| {
+                log::info!("Window resized to {:?}", event.new_size);
+                component.cam.set_screen_resolution(cgmath::vec2(event.new_size.x as f32, event.new_size.y as f32));
+            });
         }
 
         node.write().unwrap().components.push(component);

@@ -14,3 +14,6 @@ covalent = { path = "../covalent", version = "^0.1.1" }
 glium = "^0.27"
 log = "0.4"
 
+[badges]
+maintenance = { status = "experimental" }
+

@@ -10,6 +10,9 @@ pub use common::*;
 mod event;
 pub use event::*;
 
+mod input;
+pub use input::*;
+
 mod lock_data;
 
 use crate::input::*;
@@ -20,4 +23,5 @@ pub struct EventHandlers {
     pub tick: Arc<RwLock<EventHandler<TickEvent>>>,
     pub key: Arc<RwLock<EventHandler<KeyboardEvent>>>,
     pub mouse_delta: Arc<RwLock<EventHandler<MouseDeltaEvent>>>,
+    pub window_resize: Arc<RwLock<EventHandler<WindowResizeEvent>>>
 }
