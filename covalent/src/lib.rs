@@ -73,9 +73,19 @@ impl InterpolatedStopwatch {
     /// Call this function every time the given event happens.
     /// You will be able to retrieve the average time between calls to `tick`
     /// using the `average_time` function.
-    pub fn tick(&mut self) {
+    ///
+    /// Returns the time between the previous tick and this tick.
+    pub fn tick(&mut self) -> time::Duration {
+        let prev_offset = match self.offset {
+            0 => self.times.len() - 1,
+            _ => self.offset - 1
+        };
+
         self.times[self.offset] = time::Instant::now();
+        let old_time = self.times[prev_offset];
+        let time = self.times[self.offset].duration_since(old_time);
         self.offset = (self.offset + 1) % self.times.len();
+        time
     }
 
     pub fn average_time(&self) -> time::Duration {
@@ -132,7 +142,10 @@ impl Context {
         // Execute pre-frame actions.
 
         // Asynchronously process frame.
-        self.scene.read().unwrap().events.tick.write().unwrap().handle(events::TickEvent {});
+        let delta = self.frame_stopwatch.borrow_mut().tick();
+        self.scene.read().unwrap().events.tick.write().unwrap().handle(events::TickEvent {
+            delta: delta.as_secs_f64()
+        });
     }
     
     /// Should be called by the graphics backend as soon as rendering the frame is complete.
@@ -142,7 +155,6 @@ impl Context {
 
     /// Should be called by the graphics backend once every frame to retrieve the current graphics pipeline.
     pub fn render_phases(&self) -> (Arc<RwLock<scene::Scene>>, std::collections::btree_map::Values<i32, (String, graphics::PipelinePhase)>) {
-        self.frame_stopwatch.borrow_mut().tick();
         //log::trace!("{:.1} FPS", 1.0 / self.frame_stopwatch.borrow().average_time().as_secs_f64());
         (Arc::clone(&self.scene), self.graphics_pipeline.iter())
     }

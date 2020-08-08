@@ -85,7 +85,7 @@ impl TickDebugComponent {
         if let Some(scene) = node.read().unwrap().scene.upgrade() {
             TickDebugData::listen(&data, &scene.read().unwrap().events.tick, |_event, component| {
                 component.tick_num += 1;
-                //println!("Tick {}", component.tick_num);
+                //println!("Tick {} (delta: {})", component.tick_num, event.delta);
             });
         }
 
