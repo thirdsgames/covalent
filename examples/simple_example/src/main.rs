@@ -1,6 +1,5 @@
 use std::sync::{Arc, RwLock};
 use log::{info};
-use covalent::graphics::PerspectiveCamera;
 
 fn setup_logger() -> Result<(), fern::InitError> {
     if !std::path::Path::new("logs").is_dir() {

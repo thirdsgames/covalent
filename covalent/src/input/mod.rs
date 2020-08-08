@@ -242,3 +242,11 @@ pub struct KeyboardEvent {
     pub virtual_keycode: Option<VirtualKeyCode>,
 }
 impl Event for KeyboardEvent {}
+
+/// The mouse has been moved by a certain amount of pixels in the X and Y directions.
+#[derive(Debug)]
+pub struct MouseDeltaEvent {
+    /// The difference in pixels between the location of the mouse last frame and this frame.
+    pub delta: cgmath::Vector2<f64>
+}
+impl Event for MouseDeltaEvent {}

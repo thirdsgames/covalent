@@ -105,6 +105,9 @@ pub struct CameraMotionComponent {
     key_right: bool,
     key_up: bool,
     key_down: bool,
+
+    pitch: f32,
+    yaw: f32,
 }
 impl Component for CameraMotionComponent {}
 
@@ -129,6 +132,9 @@ impl CameraMotionComponent {
             key_right: false,
             key_up: false,
             key_down: false,
+
+            pitch: 0.0,
+            yaw: 0.0,
         }));
 
         let data = Arc::new(RwLock::new(CameraMotionData {
@@ -160,6 +166,8 @@ impl CameraMotionComponent {
                 }
 
                 component.cam.set_pos(component.cam.get_pos() + offset_pos * 0.001);
+                let xy = component.pitch.cos();
+                component.cam.set_dir(cgmath::vec3(-xy * component.yaw.cos(), xy * component.yaw.sin(), -component.pitch.sin()));
 
                 component.cam.update_matrices(Arc::clone(&component.camera_matrices));
             });
@@ -204,6 +212,11 @@ impl CameraMotionComponent {
                     }
                     _ => {}
                 }
+            });
+
+            CameraMotionData::listen(&data, &scene.read().unwrap().events.mouse_delta, |event, component| {
+                component.pitch += event.delta.y as f32 * 0.001f32;
+                component.yaw += event.delta.x as f32 * 0.001f32;
             });
         }
 

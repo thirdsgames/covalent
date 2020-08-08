@@ -12,11 +12,12 @@ pub use event::*;
 
 mod lock_data;
 
-use crate::input::KeyboardEvent;
+use crate::input::*;
 
 /// A manager for event handlers in a scene. This contains all the common event handlers.
 #[derive(Default)]
 pub struct EventHandlers {
     pub tick: Arc<RwLock<EventHandler<TickEvent>>>,
     pub key: Arc<RwLock<EventHandler<KeyboardEvent>>>,
+    pub mouse_delta: Arc<RwLock<EventHandler<MouseDeltaEvent>>>,
 }

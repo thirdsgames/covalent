@@ -7,7 +7,7 @@ use glium::glutin;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
-use glium::backend::glutin::glutin::event::{VirtualKeyCode, ElementState};
+use glium::backend::glutin::glutin::event::{VirtualKeyCode, ElementState, DeviceEvent};
 
 /// Max vertices to store in a single VBO.
 const MAX_VERTS: usize = 10_000;
@@ -302,8 +302,8 @@ impl graphics::Backend for BackendGL {
                         glutin::event::WindowEvent::CloseRequested => {
                             *control_flow = glutin::event_loop::ControlFlow::Exit;
                             return;
-                        }
-                        glutin::event::WindowEvent::KeyboardInput { device_id: _, input, is_synthetic: _ } => {
+                        },
+                        glutin::event::WindowEvent::KeyboardInput { input, .. } => {
                             // echo this event through to covalent, so that event listeners can
                             // listen for it
                             let event = covalent::input::KeyboardEvent {
@@ -318,8 +318,17 @@ impl graphics::Backend for BackendGL {
                                 }
                             };
                             ctx.process_keyboard_event(event);
-                        }
-                        _ => return,
+                        },
+                        _ => (),
+                    },
+
+                    glutin::event::Event::DeviceEvent { event, .. } => match event {
+                        DeviceEvent::MouseMotion { delta } => {
+                            ctx.process_mouse_delta_event(covalent::input::MouseDeltaEvent {
+                                delta: covalent::vec2(delta.0, delta.1)
+                            });
+                        },
+                        _ => (),
                     },
 
                     // All events have been successfully polled.

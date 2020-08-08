@@ -113,7 +113,7 @@ impl PerspectiveCamera {
 
     /// Retrieves the (normalised) direction pointing to the right from the camera.
     pub fn get_right(&self) -> Vector3<f32> {
-        self.up.cross(self.dir)
+        self.dir.cross(self.up)
     }
 }
 

@@ -152,6 +152,12 @@ impl Context {
     pub fn process_keyboard_event(&self, e: input::KeyboardEvent) {
         self.scene.read().unwrap().events.key.write().unwrap().handle(e);
     }
+
+    /// Should be called by the graphics backend whenever the mouse is moved.
+    /// This will trigger an event handler in the current `Scene`.
+    pub fn process_mouse_delta_event(&self, e: input::MouseDeltaEvent) {
+        self.scene.read().unwrap().events.mouse_delta.write().unwrap().handle(e);
+    }
 }
 
 /// Construct a covalent context from the given backend, then executes the application defined by this Covalent context.
