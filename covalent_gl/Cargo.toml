@@ -1,10 +1,10 @@
 [package]
 name = "covalent_gl"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["thirdsgames <thirdsgames2018@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
-description = "OpenGL backend for the Covalent engine"
+description = "Crate name available"
 repository = "https://github.com/thirdsgames/covalent/tree/master/covalent_gl"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,4 +16,3 @@ log = "0.4"
 
 [badges]
 maintenance = { status = "experimental" }
-
